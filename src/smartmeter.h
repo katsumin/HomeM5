@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "echonet.h"
+#include "debugView.h"
 #define BP35C0_CHANNEL 0
 #define BP35C0_CHANNEL_PAGE 1
 #define BP35C0_PAN_ID 2
@@ -47,6 +48,7 @@ private:
   float _powerMinus;
   time_t _timePlus;
   time_t _timeMinus;
+  DebugView *_debugView = NULL;
 
 private:
   void parseE1(u_char *edt);
@@ -106,6 +108,7 @@ public:
   inline float getWattHourMinus() { return _powerMinus; };
   inline time_t getTimePlus() { return _timePlus; };
   inline time_t getTimeMinus() { return _timeMinus; };
+  inline void setDebugView(DebugView *view) { _debugView = view; }
   /*
   初期化
   */

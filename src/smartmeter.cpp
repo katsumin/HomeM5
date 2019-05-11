@@ -19,7 +19,8 @@ void SmartMeter::connect(const char *pwd, const char *bid)
   char buf[128];
   while (true)
   {
-    Serial.println("join start");
+    // Serial.println("join start");
+    _debugView->output("join start");
 
     if (sendCmdAndWaitOk("SKVER") < 0) // SKVER
       continue;
@@ -44,14 +45,14 @@ void SmartMeter::connect(const char *pwd, const char *bid)
     if (sendCmdAndWaitOk(buf) < 0) // SKJOIN
       continue;
 
-    Serial.println("join end");
+    _debugView->output("join end");
     break;
   }
 }
 
 void SmartMeter::disconnect()
 {
-  Serial.println("term");
+  _debugView->output("term");
   sendCmdAndWaitOk("SKTERM"); // SKTERM
 }
 
@@ -73,7 +74,7 @@ u_char SmartMeter::_cmd_buf[] = {
 };
 int SmartMeter::request()
 {
-  Serial.println("send request");
+  _debugView->output("send request");
   char buf[128];
   int len = sizeof(_cmd_buf);
   snprintf(buf, sizeof(buf), "SKSENDTO 1 %s 0E1A 1 0 %04X ", _addr, len);
@@ -94,6 +95,7 @@ int SmartMeter::waitOk()
     if (len > 0)
     {
       buf[len - 1] = 0;
+      // _debugView->output(buf);
       Serial.println(buf);
       if (strncmp(buf, "OK", 2) == 0)
         return 0;
@@ -118,7 +120,7 @@ void SmartMeter::sendCmdAndWaitIpv6Address()
     if (len > 0)
     {
       _addr[len - 1] = 0;
-      Serial.println(_addr);
+      _debugView->output(_addr);
       if (strncmp(_addr, "SKLL64", strlen("SKLL64")) != 0)
         break;
     }
@@ -141,17 +143,17 @@ void SmartMeter::scan()
   {
     if (sendCmdAndWaitOk("SKSCAN 2 FFFFFFFF 6 0") < 0) // SKSCAN
       continue;
-    Serial.println("wait start");
+    _debugView->output("wait start");
     delay(10000);
     while (true)
     {
       size_t len = Serial2.readBytesUntil(0x0a, buf, sizeof(buf));
       Serial.printf("%d :", len);
-      Serial.println("wait end");
+      _debugView->output("wait end");
       if (len > 0)
       {
         buf[len - 1] = 0;
-        Serial.println(buf);
+        _debugView->output(buf);
         if (strncmp(buf, "EVENT 22", strlen("EVENT 22")) == 0)
           break;
         else if (strncmp(buf, "EPANDESC", strlen("EPANDESC")) == 0)
@@ -189,7 +191,7 @@ void SmartMeter::scan()
   for (int i = 0; i < 7; i++)
   {
     Serial.printf("%d :", i);
-    Serial.println(_para[i]);
+    _debugView->output(_para[i]);
   }
 }
 
@@ -266,19 +268,22 @@ void SmartMeter::parseEAEB(u_char *edt, time_t *t, float *p)
 
 RCV_CODE SmartMeter::parse(u_char *binBuf, size_t size)
 {
+  char buf[64];
   RCV_CODE code = ERXUDP;
   for (int j = 0; j < size; j++)
     Serial.printf("<%02x>", binBuf[j]);
   // Serial.printf("buf=%p, len=%d", binBuf, l);
-  Serial.println();
+  // Serial.println();
   ECHONET_FRAME *ef = (ECHONET_FRAME *)binBuf;
   if (ef->ehd1 == 0x10 && ef->ehd2 == 0x81)
   {
     u_int seoj = ef->seoj[0] << 16 | ef->seoj[1] << 8 | ef->seoj[2];
     u_int deoj = ef->deoj[0] << 16 | ef->deoj[1] << 8 | ef->deoj[2];
     u_short tid = ef->tid[0] << 8 | ef->tid[1];
-    Serial.printf("seoj=%06x, deoj=%06x, tid=%04x, esv=%02x, opc=%02x", seoj, deoj, tid, ef->esv, ef->opc);
-    Serial.println();
+    // Serial.printf("seoj=%06x, deoj=%06x, tid=%04x, esv=%02x, opc=%02x", seoj, deoj, tid, ef->esv, ef->opc);
+    // Serial.println();
+    snprintf(buf, sizeof(buf), "seoj=%06x, deoj=%06x, tid=%04x, esv=%02x, opc=%02x", seoj, deoj, tid, ef->esv, ef->opc);
+    _debugView->output(buf);
     if (seoj == 0x028801 && deoj == 0x05ff01)
     {
       // 低圧スマート電力量メータ→コントローラ
@@ -286,10 +291,17 @@ RCV_CODE SmartMeter::parse(u_char *binBuf, size_t size)
       for (int i = 0; i < ef->opc; i++)
       {
         int s = pd->pdc;
-        Serial.printf(" epc=%02x, pdc=%d, data=", pd->epc, s);
+        // Serial.printf(" epc=%02x, pdc=%d, data=", pd->epc, s);
+        // for (int j = 0; j < s; j++)
+        //   Serial.printf("<%02x>", pd->edt[j]);
+        // Serial.println();
+        snprintf(buf, sizeof(buf), " epc=%02x, pdc=%d, data=", pd->epc, s);
         for (int j = 0; j < s; j++)
-          Serial.printf("<%02x>", pd->edt[j]);
-        Serial.println();
+        {
+          int l = strlen(buf);
+          snprintf(&buf[l], sizeof(buf) - l, "%02x,", pd->edt[j]);
+        }
+        _debugView->output(buf);
         // pd->edt parse
         switch (pd->epc)
         {
@@ -327,6 +339,7 @@ RCV_CODE SmartMeter::polling(char *data, size_t size)
   {
     len--;
     buf[len] = 0;
+    // _debugView->output(buf);
     Serial.println(buf);
     if (strncmp(buf, "ERXUDP", strlen("ERXUDP")) == 0)
     {

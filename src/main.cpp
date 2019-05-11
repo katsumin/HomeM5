@@ -8,11 +8,14 @@
 #include "InfluxDb.h"
 #include "smartmeter.h"
 #include "config.h"
+#include "debugView.h"
 #define SCK 18
 #define MISO 19
 #define MOSI 23
 #define CS 26
 
+#define TEXT_HEIGHT (16)
+DebugView debugView(0, 100, 320, TEXT_HEIGHT * 7 - 1);
 InfluxDb influx(INFLUX_SERVER, INFLUX_DB);
 SmartMeter sm;
 int16_t fontWidth;
@@ -21,7 +24,8 @@ int16_t fontHeight;
 static boolean sendEnable = true;
 void bp35c0_polling()
 {
-  int x = 12 * fontWidth;
+  int res;
+  int x = 13 * fontWidth;
   char buf[256];
   RCV_CODE code = sm.polling(buf, sizeof(buf));
   switch (code)
@@ -37,7 +41,9 @@ void bp35c0_polling()
     M5.Lcd.fillRect(x, fontHeight * 3, fontWidth * 9, fontHeight, BLACK);
     M5.Lcd.drawString(buf, x, fontHeight * 3);
     snprintf(buf, sizeof(buf), "power value=%ld", sm.getPower());
-    influx.write(buf);
+    debugView.output(buf);
+    res = influx.write(buf);
+    debugView.output(res);
     break;
   case RCV_CODE::ERXUDP_EAB:
     snprintf(buf, sizeof(buf), "%9.1f", sm.getWattHourPlus());
@@ -45,13 +51,17 @@ void bp35c0_polling()
     M5.Lcd.setTextColor(YELLOW);
     M5.Lcd.fillRect(x, fontHeight * 4, fontWidth * 9, fontHeight, BLACK);
     M5.Lcd.drawString(buf, x, fontHeight * 4);
-    snprintf(buf, sizeof(buf), "+power value=%.1f %ld000000000", sm.getWattHourPlus(), sm.getTimePlus());
-    influx.write(buf);
     snprintf(buf, sizeof(buf), "%9.1f", sm.getWattHourMinus());
     M5.Lcd.fillRect(x, fontHeight * 5, fontWidth * 9, fontHeight, BLACK);
     M5.Lcd.drawString(buf, x, fontHeight * 5);
+    snprintf(buf, sizeof(buf), "+power value=%.1f %ld000000000", sm.getWattHourPlus(), sm.getTimePlus());
+    debugView.output(buf);
+    res = influx.write(buf);
+    debugView.output(res);
     snprintf(buf, sizeof(buf), "-power value=%.1f %ld000000000", sm.getWattHourMinus(), sm.getTimeMinus());
-    influx.write(buf);
+    debugView.output(buf);
+    res = influx.write(buf);
+    debugView.output(res);
     break;
   case RCV_CODE::EVENT_25:
     // 接続完了 → 要求コマンドを開始
@@ -122,23 +132,30 @@ void bp35c0_monitoring_task(void *arm)
   vTaskDelete(NULL);
 }
 
-WiFiClient wc;
-EthernetClient ec;
+// WiFiClient wc;
+// EthernetClient ec;
 WiFiMulti wm;
 void nw_init()
 {
+
   Serial.println();
   SPI.begin(SCK, MISO, MOSI, -1);
-  Ethernet.init(CS);
-  if (Ethernet.linkStatus() == LinkON)
+  Ethernet.init(CS); // Ethernet/Ethernet2
+  // Ethernet.setCsPin(CS); // Ethernet3
+  IPAddress addr;
+  char *nw_type;
+  if (Ethernet.linkStatus() == LinkON) // Ethernet
+  // if (Ethernet.begin(mac) == 1) // Ethernet3
   {
     // Ethernet
     Ethernet.begin(mac);
     Serial.println("Ethernet connected");
     Serial.println("IP address: ");
-    Serial.println(Ethernet.localIP());
+    addr = Ethernet.localIP();
 
-    influx.setClient(&ec);
+    influx.setEthernet(true);
+    // influx.setClient(&ec);
+    nw_type = "Ethernet";
   }
   else
   {
@@ -152,10 +169,21 @@ void nw_init()
     }
     Serial.println("WiFi connected");
     Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
+    addr = WiFi.localIP();
 
-    influx.setClient(&wc);
+    influx.setEthernet(false);
+    // influx.setClient(&wc);
+    nw_type = "WiFi";
   }
+  char buf[64];
+  snprintf(buf, sizeof(buf), "%s(%s)", addr.toString().c_str(), nw_type);
+  Serial.println(buf);
+  M5.Lcd.setTextSize(1);
+  M5.Lcd.setTextColor(WHITE);
+  int32_t x_pos = 130;
+  int32_t y_pos = M5.Lcd.height() - TEXT_HEIGHT + 3;
+  // M5.Lcd.fillRect(x_pos, y_pos - 1, WIDTH, TEXT_HEIGHT, BLACK);
+  M5.Lcd.drawString(buf, x_pos, y_pos);
 }
 
 BME280<> BMESensor; // instantiate sensor
@@ -164,10 +192,12 @@ void updateBme()
   BMESensor.refresh(); // read current sensor data
   char buf[64];
   snprintf(buf, sizeof(buf), "room temp=%.1f,hum=%.1f,press=%.1f", BMESensor.temperature, BMESensor.humidity, BMESensor.pressure / 100.0F);
-  Serial.println(buf);
-  int r = influx.write(buf);
-  Serial.println(r);
-  int x = 15 * fontWidth;
+  // Serial.println(buf);
+  debugView.output(buf);
+  int res = influx.write(buf);
+  debugView.output(res);
+  // Serial.println(res);
+  int x = 16 * fontWidth;
   M5.Lcd.setTextSize(2);
   M5.Lcd.setTextColor(YELLOW);
   snprintf(buf, sizeof(buf), "%6.1f", BMESensor.temperature);
@@ -184,7 +214,7 @@ void updateBme()
 void updateSmartMeter()
 {
   char buf[64];
-  int x = 12 * fontWidth;
+  int x = 13 * fontWidth;
   snprintf(buf, sizeof(buf), "%9ld", sm.getPower());
   M5.Lcd.setTextSize(2);
   M5.Lcd.setTextColor(YELLOW);
@@ -192,7 +222,6 @@ void updateSmartMeter()
   M5.Lcd.drawString(buf, x, fontHeight * 3);
 }
 
-#define TEXT_HEIGHT (15)
 #define WIDTH (60)
 #define POS_A_X (36)
 void button(int32_t x_pos, const char *label)
@@ -210,7 +239,9 @@ void button(int32_t x_pos, const char *label)
 void setup()
 {
   M5.begin();
+  M5.Lcd.clear();
 
+  sm.setDebugView(&debugView);
   Serial.begin(115200);
   sm.init();
 
@@ -218,18 +249,17 @@ void setup()
   Wire.begin(GPIO_NUM_21, GPIO_NUM_22); // initialize I2C that connects to sensor
   BMESensor.begin();                    // initalize bme280 sensor
 
-  M5.Lcd.clear();
   M5.Lcd.setTextSize(2);
   M5.Lcd.setTextColor(WHITE);
-  fontHeight = M5.Lcd.fontHeight(2);
+  fontHeight = M5.Lcd.fontHeight(1);
   fontWidth = M5.Lcd.textWidth(" ");
 
-  M5.Lcd.drawString("temperature:         [C]", 0, 0);
-  M5.Lcd.drawString("humidity   :         [%H]", 0, fontHeight);
-  M5.Lcd.drawString("pressure   :         [hPa]", 0, fontHeight * 2);
-  M5.Lcd.drawString("power      :         [W]", 0, fontHeight * 3);
-  M5.Lcd.drawString("watt-hour +:         [kWh]", 0, fontHeight * 4);
-  M5.Lcd.drawString("watt-hour -:         [kWh]", 0, fontHeight * 5);
+  M5.Lcd.drawString("temperature:           C", 0, 0);
+  M5.Lcd.drawString("humidity   :           %H", 0, fontHeight);
+  M5.Lcd.drawString("pressure   :           hPa", 0, fontHeight * 2);
+  M5.Lcd.drawString("power      :           W", 0, fontHeight * 3);
+  M5.Lcd.drawString("watt-hour +:           kWh", 0, fontHeight * 4);
+  M5.Lcd.drawString("watt-hour -:           kWh", 0, fontHeight * 5);
   updateBme();
   button(POS_A_X, "JOIN");
 }
@@ -237,6 +267,7 @@ void setup()
 unsigned long pre = ULONG_MAX;
 unsigned long cur;
 static const unsigned long INTERVAL = 60 * 1000;
+long diff = 0;
 void loop()
 {
   if (M5.BtnA.wasPressed())
@@ -256,13 +287,18 @@ void loop()
     }
   }
 
+  char buf[64];
   if (pre == ULONG_MAX)
   {
     pre = millis();
   }
   cur = millis();
-  if (cur - pre > INTERVAL)
+  if (cur - pre > INTERVAL - diff)
   {
+    diff = cur - pre;
+    snprintf(buf, sizeof(buf), "%ld - %ld = %ld", cur, pre, diff);
+    debugView.output(buf);
+    diff -= INTERVAL;
     pre = cur;
     updateBme();
   }

@@ -2,6 +2,7 @@
 #define _SMARTMETER_H_
 
 #include <Arduino.h>
+#include "echonet.h"
 #define BP35C0_CHANNEL 0
 #define BP35C0_CHANNEL_PAGE 1
 #define BP35C0_PAN_ID 2
@@ -18,6 +19,10 @@ enum RCV_CODE
   TIMEOUT,
   // UDP受信
   ERXUDP,
+  // UDP受信/瞬時電力
+  ERXUDP_E7,
+  // UDP受信/積算電力量
+  ERXUDP_EAB,
   // PANAによる接続が完了
   EVENT_25,
   // 接続相手からセッション終了要求を受信した
@@ -30,14 +35,23 @@ enum RCV_CODE
   EVENT_29,
 };
 
-class SmartMeter
+class SmartMeter : public Echonet
 {
 private:
   char _para[7][20];
   char _addr[64];
   static u_char _cmd_buf[];
+  float _k = 0.1;
+  long _power;
+  float _powerPlus;
+  float _powerMinus;
+  time_t _timePlus;
+  time_t _timeMinus;
 
 private:
+  void parseE1(u_char *edt);
+  void parseE7(u_char *edt);
+  void parseEAEB(u_char *edt, time_t *t, float *p);
   /* 
   チャンネル・スキャン
   [引数]
@@ -76,8 +90,22 @@ private:
    -1: コマンド送信後、OKを受信せずタイムアウトした
   */
   int sendCmdAndWaitOk(const char *cmd);
+  /*
+  受信バッファの解析
+  [引数]
+   バッファ
+   バッファサイズ
+  [戻り値]
+   enum RCV_CODE
+  */
+  RCV_CODE parse(u_char *buf, size_t size);
 
 public:
+  inline long getPower() { return _power; };
+  inline float getWattHourPlus() { return _powerPlus; };
+  inline float getWattHourMinus() { return _powerMinus; };
+  inline time_t getTimePlus() { return _timePlus; };
+  inline time_t getTimeMinus() { return _timeMinus; };
   /*
   初期化
   */
@@ -103,8 +131,11 @@ public:
   void disconnect();
   /*
   取得要求
+  [戻り値]
+   0: コマンド送信後、OKを受信した
+   -1: コマンド送信後、OKを受信せずタイムアウトした
   */
-  void request();
+  int request();
   /*
   受信待ち
   [引数]

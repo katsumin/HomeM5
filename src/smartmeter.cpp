@@ -12,10 +12,13 @@ void SmartMeter::init()
   Serial2.setTimeout(1000);
   // Serial2.println("WOPT 01");
   sendCmdAndWaitOk("SKSREG SFE 0"); // echoなし
+
+  setConnectState(CONNECT_STATE::DISCONNECTED);
 }
 
 void SmartMeter::connect(const char *pwd, const char *bid)
 {
+  setConnectState(CONNECT_STATE::CONNECTING);
   char buf[128];
   while (true)
   {
@@ -48,12 +51,14 @@ void SmartMeter::connect(const char *pwd, const char *bid)
     _debugView->output("join end");
     break;
   }
+  setConnectState(CONNECT_STATE::CONNECTED);
 }
 
 void SmartMeter::disconnect()
 {
   _debugView->output("term");
   sendCmdAndWaitOk("SKTERM"); // SKTERM
+  setConnectState(CONNECT_STATE::DISCONNECTED);
 }
 
 u_char SmartMeter::_cmd_buf[] = {

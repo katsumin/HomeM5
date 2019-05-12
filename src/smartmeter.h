@@ -36,6 +36,16 @@ enum RCV_CODE
   EVENT_29,
 };
 
+enum CONNECT_STATE
+{
+  // 接続中
+  CONNECTING,
+  // 接続済み
+  CONNECTED,
+  // 切断済み
+  DISCONNECTED,
+};
+
 class SmartMeter : public Echonet
 {
 private:
@@ -49,6 +59,7 @@ private:
   time_t _timePlus;
   time_t _timeMinus;
   DebugView *_debugView = NULL;
+  CONNECT_STATE _connectState;
 
 private:
   void parseE1(u_char *edt);
@@ -108,7 +119,9 @@ public:
   inline float getWattHourMinus() { return _powerMinus; };
   inline time_t getTimePlus() { return _timePlus; };
   inline time_t getTimeMinus() { return _timeMinus; };
-  inline void setDebugView(DebugView *view) { _debugView = view; }
+  inline void setDebugView(DebugView *view) { _debugView = view; };
+  inline CONNECT_STATE getConnectState() { return _connectState; };
+  inline void setConnectState(CONNECT_STATE state) { _connectState = state; };
   /*
   初期化
   */

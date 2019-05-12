@@ -11,11 +11,12 @@ private:
   int _w;
   int _h;
   TFT_eSprite _debugView = TFT_eSprite(&M5.Lcd);
-  char _buf[60];
+  char _buf[320 / 5];
   void _out(char *buf)
   {
-    _debugView.scroll(0, -SCROLL_SIZE);
+    _debugView.setTextSize(1);
     _debugView.drawString(_buf, 0, _h - SCROLL_SIZE);
+    _debugView.scroll(0, -SCROLL_SIZE);
     _debugView.pushSprite(_x, _y);
   }
 

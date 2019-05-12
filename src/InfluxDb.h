@@ -16,7 +16,7 @@ public:
     _mutex = xSemaphoreCreateMutex();
   }
   // void setClient(Client *client) { _pClient = client; }
-  int write(char *data);
+  int write(const char *data);
   inline void setEthernet(boolean ether) { _isEthernet = ether; }
 
 private:

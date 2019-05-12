@@ -30,7 +30,7 @@ public:
     _debugView.createSprite(_w, _h);
     _debugView.setTextColor(BLUE);
   }
-  void output(char *str)
+  void output(const char *str)
   {
     snprintf(_buf, sizeof(_buf) - 1, "%s", str);
     _out(_buf);

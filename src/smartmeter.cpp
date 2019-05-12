@@ -273,7 +273,7 @@ RCV_CODE SmartMeter::parse(u_char *binBuf, size_t size)
   for (int j = 0; j < size; j++)
     Serial.printf("<%02x>", binBuf[j]);
   // Serial.printf("buf=%p, len=%d", binBuf, l);
-  // Serial.println();
+  Serial.println();
   ECHONET_FRAME *ef = (ECHONET_FRAME *)binBuf;
   if (ef->ehd1 == 0x10 && ef->ehd2 == 0x81)
   {
@@ -350,8 +350,11 @@ RCV_CODE SmartMeter::polling(char *data, size_t size)
         {
           u_char *binBuf;
           size_t l = toBin(&buf[i + 1], &binBuf);
-          r = parse(binBuf, l);
-          free(binBuf);
+          if (l > 0)
+          {
+            r = parse(binBuf, l);
+            free(binBuf);
+          }
           break;
         }
       }

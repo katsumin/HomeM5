@@ -1,3 +1,4 @@
+#include <queue>
 #include <M5Stack.h>
 #include <time.h>
 #include <WiFi.h>
@@ -21,10 +22,11 @@ SmartMeter sm;
 int16_t fontWidth;
 int16_t fontHeight;
 
-static boolean sendEnable = true;
+std::queue<String> influxQueue;
+static boolean sendEnable = false;
 void bp35c0_polling()
 {
-  int res;
+  // int res;
   int x = 13 * fontWidth;
   char buf[256];
   RCV_CODE code = sm.polling(buf, sizeof(buf));
@@ -41,9 +43,10 @@ void bp35c0_polling()
     M5.Lcd.fillRect(x, fontHeight * 3, fontWidth * 9, fontHeight, BLACK);
     M5.Lcd.drawString(buf, x, fontHeight * 3);
     snprintf(buf, sizeof(buf), "power value=%ld", sm.getPower());
-    debugView.output(buf);
-    res = influx.write(buf);
-    debugView.output(res);
+    // debugView.output(buf);
+    // res = influx.write(buf);
+    // debugView.output(res);
+    influxQueue.push(String(buf));
     break;
   case RCV_CODE::ERXUDP_EAB:
     snprintf(buf, sizeof(buf), "%9.1f", sm.getWattHourPlus());
@@ -55,13 +58,15 @@ void bp35c0_polling()
     M5.Lcd.fillRect(x, fontHeight * 5, fontWidth * 9, fontHeight, BLACK);
     M5.Lcd.drawString(buf, x, fontHeight * 5);
     snprintf(buf, sizeof(buf), "+power value=%.1f %ld000000000", sm.getWattHourPlus(), sm.getTimePlus());
-    debugView.output(buf);
-    res = influx.write(buf);
-    debugView.output(res);
+    // debugView.output(buf);
+    // res = influx.write(buf);
+    // debugView.output(res);
+    influxQueue.push(String(buf));
     snprintf(buf, sizeof(buf), "-power value=%.1f %ld000000000", sm.getWattHourMinus(), sm.getTimeMinus());
-    debugView.output(buf);
-    res = influx.write(buf);
-    debugView.output(res);
+    // debugView.output(buf);
+    // res = influx.write(buf);
+    // debugView.output(res);
+    influxQueue.push(String(buf));
     break;
   case RCV_CODE::EVENT_25:
     // 接続完了 → 要求コマンドを開始
@@ -78,6 +83,7 @@ void bp35c0_polling()
     sm.disconnect();
     delay(1000);
     sm.connect(PWD, BID);
+    sendEnable = false;
     break;
   case RCV_CODE::EVENT_29:
     // セッション期限切れ → 送信を止め、'EVENT 25'を待つ
@@ -264,12 +270,19 @@ void setup()
   button(POS_A_X, "JOIN");
 }
 
-unsigned long pre = ULONG_MAX;
-unsigned long cur;
+unsigned long pre = millis();
 static const unsigned long INTERVAL = 60 * 1000;
 long diff = 0;
 void loop()
 {
+  if (!influxQueue.empty())
+  {
+    String s = influxQueue.front();
+    debugView.output(s.c_str());
+    int res = influx.write(s.c_str());
+    debugView.output(res);
+    influxQueue.pop();
+  }
   if (M5.BtnA.wasPressed())
   {
     if (bTaskRunning)
@@ -281,25 +294,21 @@ void loop()
     else
     {
       // 接続
-      bTaskRunning = true;
+      // bTaskRunning = true;
       xTaskCreate(&bp35c0_monitoring_task, "bp35c0r", 4096, NULL, 5, NULL);
       button(POS_A_X, "TERM");
     }
   }
 
-  char buf[64];
-  if (pre == ULONG_MAX)
+  long d = millis() - pre;
+  if (d < 0)
+    d += ULONG_MAX;
+  if (d >= INTERVAL && bTaskRunning) // debug
   {
-    pre = millis();
-  }
-  cur = millis();
-  if (cur - pre > INTERVAL - diff)
-  {
-    diff = cur - pre;
-    snprintf(buf, sizeof(buf), "%ld - %ld = %ld", cur, pre, diff);
+    char buf[64];
+    snprintf(buf, sizeof(buf), "%ld -> %ld, memory(%ld)", pre, d, xPortGetFreeHeapSize());
     debugView.output(buf);
-    diff -= INTERVAL;
-    pre = cur;
+    pre += d;
     updateBme();
   }
 

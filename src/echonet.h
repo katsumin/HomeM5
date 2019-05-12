@@ -32,6 +32,11 @@ public:
   {
     size_t l = strlen(str) / 2;
     u_char *p = (u_char *)malloc(l);
+    if (p == nullptr)
+    {
+      Serial.println("malloc error");
+      return 0;
+    }
     for (int i = 0; i < l; i++)
     {
       p[i] = (u_char)(ASC2BIN(str[i * 2]) << 4 | ASC2BIN(str[i * 2 + 1]));

@@ -18,12 +18,14 @@ void SmartMeter::init()
 
 void SmartMeter::connect(const char *pwd, const char *bid)
 {
-  setConnectState(CONNECT_STATE::CONNECTING);
+  Serial.println("connect");
+  setConnectState(CONNECT_STATE::SCANNING);
   char buf[128];
   while (true)
   {
     // Serial.println("join start");
     _debugView->output("join start");
+    Serial.println("scanning");
 
     if (sendCmdAndWaitOk("SKVER") < 0) // SKVER
       continue;
@@ -51,7 +53,7 @@ void SmartMeter::connect(const char *pwd, const char *bid)
     _debugView->output("join end");
     break;
   }
-  setConnectState(CONNECT_STATE::CONNECTED);
+  setConnectState(CONNECT_STATE::CONNECTING);
 }
 
 void SmartMeter::disconnect()

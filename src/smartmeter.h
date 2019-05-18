@@ -38,6 +38,8 @@ enum RCV_CODE
 
 enum CONNECT_STATE
 {
+  // スキャン中
+  SCANNING,
   // 接続中
   CONNECTING,
   // 接続済み

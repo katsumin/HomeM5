@@ -21,6 +21,7 @@ void FunctionButton::set(const char *label)
   {
     x_pos = POS_C_X;
   }
+  M5.Lcd.setTextFont(1);
   M5.Lcd.setTextSize(1);
   M5.Lcd.fillRect(x_pos, y_pos - 1, WIDTH, TEXT_HEIGHT, BLACK);
   M5.Lcd.setTextColor(WHITE);

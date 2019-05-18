@@ -132,6 +132,7 @@ void nw_init()
     snprintf(buf, sizeof(buf), "%s(WiFi)", addr.toString().c_str());
   }
   Serial.println(buf);
+  M5.Lcd.setTextFont(1);
   M5.Lcd.setTextSize(1);
   M5.Lcd.setTextColor(WHITE);
   int32_t x_pos = 130;
@@ -142,7 +143,15 @@ void nw_init()
 BME280<> BMESensor; // instantiate sensor
 void updateBme(boolean withInflux)
 {
-  BMESensor.refresh(); // read current sensor data
+  while (true)
+  {
+    BMESensor.refresh(); // read current sensor data
+    float p = BMESensor.pressure;
+    if (p >= 90000.0)
+      break;
+    Serial.println(p);
+    delay(100);
+  }
   view.setTemperature(BMESensor.temperature);
   view.setHumidity(BMESensor.humidity);
   view.setPressure(BMESensor.pressure / 100.0F);
@@ -179,8 +188,6 @@ void setup()
   // Sensor
   Wire.begin(GPIO_NUM_21, GPIO_NUM_22); // initialize I2C that connects to sensor
   BMESensor.begin();                    // initalize bme280 sensor
-  updateBme(false);
-  delay(1000);
   updateBme(true);
 }
 

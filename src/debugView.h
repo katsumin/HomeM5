@@ -14,11 +14,14 @@ private:
   char _buf[320 / 5];
   void _out(char *buf)
   {
+    xSemaphoreTake(_mutex, portMAX_DELAY);
     _debugView.setTextSize(1);
     _debugView.drawString(_buf, 0, _h - SCROLL_SIZE);
     _debugView.scroll(0, -SCROLL_SIZE);
     _debugView.pushSprite(_x, _y);
+    xSemaphoreGive(_mutex);
   }
+  xSemaphoreHandle _mutex = xSemaphoreCreateMutex();
 
 public:
   DebugView(int x, int y, int w, int h)
@@ -34,13 +37,13 @@ public:
   void output(const char *str)
   {
     snprintf(_buf, sizeof(_buf) - 1, "%s", str);
-    _out(_buf);
+    // _out(_buf);
     Serial.println(str);
   }
   void output(int v)
   {
     snprintf(_buf, sizeof(_buf) - 1, "%d", v);
-    _out(_buf);
+    // _out(_buf);
     Serial.println(v);
   }
 };

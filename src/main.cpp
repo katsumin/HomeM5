@@ -12,6 +12,7 @@
 #include "debugView.h"
 #include "FunctionButton.h"
 #include "MainView.h"
+#include "NtpClient.h"
 #define SCK 18
 #define MISO 19
 #define MOSI 23
@@ -19,10 +20,12 @@
 
 // instances
 FunctionButton btnA(&M5.BtnA);
+FunctionButton btnB(&M5.BtnB);
 DebugView debugView(0, 100, 320, SCROLL_SIZE * 10);
 InfluxDb influx(INFLUX_SERVER, INFLUX_DB);
 SmartMeter sm;
 MainView view;
+NtpClient ntp;
 
 /*
 スマートメータ接続タスク
@@ -105,6 +108,7 @@ void nw_init()
   Ethernet.init(CS); // Ethernet/Ethernet2
   IPAddress addr;
   char buf[64];
+  UDP *udp = nullptr;
   if (Ethernet.linkStatus() == LinkON) // Ethernet
   {
     // Ethernet
@@ -114,6 +118,8 @@ void nw_init()
     addr = Ethernet.localIP();
     influx.setEthernet(true);
     snprintf(buf, sizeof(buf), "%s(Ethernet)", addr.toString().c_str());
+    view.setNwType("Ethernet");
+    udp = new EthernetUDP();
   }
   else
   {
@@ -130,14 +136,12 @@ void nw_init()
     addr = WiFi.localIP();
     influx.setEthernet(false);
     snprintf(buf, sizeof(buf), "%s(WiFi)", addr.toString().c_str());
+    view.setNwType("WiFi");
+    udp = new WiFiUDP();
   }
   Serial.println(buf);
-  M5.Lcd.setTextFont(1);
-  M5.Lcd.setTextSize(1);
-  M5.Lcd.setTextColor(WHITE);
-  int32_t x_pos = 130;
-  int32_t y_pos = M5.Lcd.height() - TEXT_HEIGHT + 3;
-  M5.Lcd.drawString(buf, x_pos, y_pos);
+  view.setIpAddress(addr);
+  ntp.init(udp, "time.nist.gov", random(10000, 19999));
 }
 
 BME280<> BMESensor; // instantiate sensor
@@ -180,10 +184,12 @@ void setup()
   sm.setDebugView(&debugView);
   sm.init();
   preState = sm.getConnectState();
-  btnA.set("JOIN");
+  btnA.enable("JOIN");
 
   // LAN
   nw_init();
+  ntp.update();
+  btnB.disable("NTP");
 
   // Sensor
   Wire.begin(GPIO_NUM_21, GPIO_NUM_22); // initialize I2C that connects to sensor
@@ -191,6 +197,7 @@ void setup()
   updateBme(true);
 }
 
+boolean bNtp = true;
 unsigned long preMeas = millis();
 unsigned long preView = preMeas;
 #define INTERVAL (120 * 1000)
@@ -204,16 +211,16 @@ void loop()
     switch (curState)
     {
     case CONNECT_STATE::CONNECTED:
-      btnA.set("TERM");
+      btnA.enable("TERM");
       break;
     case CONNECT_STATE::DISCONNECTED:
-      btnA.set("JOIN");
+      btnA.enable("JOIN");
       break;
     case CONNECT_STATE::CONNECTING:
-      btnA.set("CONNECTING");
+      btnA.disable("CONNECTING");
       break;
     case CONNECT_STATE::SCANNING:
-      btnA.set("SCANNING");
+      btnA.disable("SCANNING");
       break;
     }
   }
@@ -253,7 +260,7 @@ void loop()
     preView = cur;
     view.update();
   }
-  if (M5.BtnA.wasPressed())
+  if (btnA.getButton()->wasPressed())
   {
     switch (curState)
     {
@@ -269,6 +276,26 @@ void loop()
       break;
     case CONNECT_STATE::SCANNING:
       break;
+    }
+  }
+  if (bNtp)
+  {
+    if (ntp.getMillis() > 0)
+    {
+      bNtp = false;
+      time_t epoch = ntp.getEpocTime() + (millis() - ntp.getMillis()) / 1000;
+      Serial.println(epoch);
+      view.setTime(epoch);
+      btnB.enable("NTP");
+    }
+  }
+  else
+  {
+    if (btnB.getButton()->wasReleased())
+    {
+      ntp.update();
+      bNtp = true;
+      btnB.disable("NTP");
     }
   }
   delay(10);

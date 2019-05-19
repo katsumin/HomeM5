@@ -12,14 +12,16 @@ class FunctionButton
 {
 private:
   Button *_button;
+  void _set(const char *label, uint32_t color);
 
 public:
   FunctionButton(Button *button);
-  void set(const char *label);
   inline Button *getButton()
   {
     return _button;
-  }
+  };
+  inline void enable(const char *label) { _set(label, WHITE); };
+  inline void disable(const char *label) { _set(label, DARKGREY); };
 };
 
 #endif

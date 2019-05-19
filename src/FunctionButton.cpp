@@ -5,7 +5,7 @@ FunctionButton::FunctionButton(Button *button)
   _button = button;
 }
 
-void FunctionButton::set(const char *label)
+void FunctionButton::_set(const char *label, uint32_t color)
 {
   uint16_t x_pos;
   uint16_t y_pos = M5.Lcd.height() - TEXT_HEIGHT;
@@ -24,7 +24,7 @@ void FunctionButton::set(const char *label)
   M5.Lcd.setTextFont(1);
   M5.Lcd.setTextSize(1);
   M5.Lcd.fillRect(x_pos, y_pos - 1, WIDTH, TEXT_HEIGHT, BLACK);
-  M5.Lcd.setTextColor(WHITE);
+  M5.Lcd.setTextColor(color);
   M5.Lcd.setCursor(x_pos + WIDTH / 2 - M5.Lcd.textWidth(label) / 2, y_pos + 3);
   M5.Lcd.print(label);
   M5.Lcd.drawRoundRect(x_pos, y_pos - 1, WIDTH, TEXT_HEIGHT, 2, WHITE);

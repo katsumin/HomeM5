@@ -13,6 +13,9 @@
 #include "FunctionButton.h"
 #include "MainView.h"
 #include "NtpClient.h"
+#include "EchonetUdp.h"
+#include "Ecocute.h"
+#include "Aircon.h"
 #define SCK 18
 #define MISO 19
 #define MOSI 23
@@ -24,8 +27,6 @@ FunctionButton btnB(&M5.BtnB);
 DebugView debugView(0, 100, 320, SCROLL_SIZE * 10);
 InfluxDb influx(INFLUX_SERVER, INFLUX_DB);
 SmartMeter sm;
-MainView view;
-NtpClient ntp;
 
 /*
 スマートメータ接続タスク
@@ -100,6 +101,25 @@ void bp35c0_polling()
   }
 }
 
+boolean bEco = false;
+void ecocuteCallback(Ecocute *ec)
+{
+  Serial.println("Ecocute callback");
+  view.setEcoPower(ec->getPower());
+  view.setEcoTank(ec->getTank());
+  bEco = true;
+}
+
+boolean bAir = false;
+void airconCallback(Aircon *ac)
+{
+  Serial.println("Aircon callback");
+  view.setAirPower(ac->getPower());
+  view.setAirTempOut(ac->getTempOut());
+  view.setAirTempRoom(ac->getTempRoom());
+  bAir = true;
+}
+
 WiFiMulti wm;
 void nw_init()
 {
@@ -108,7 +128,8 @@ void nw_init()
   Ethernet.init(CS); // Ethernet/Ethernet2
   IPAddress addr;
   char buf[64];
-  UDP *udp = nullptr;
+  UDP *udpNtp = nullptr;
+  UDP *udpEchonet = nullptr;
   if (Ethernet.linkStatus() == LinkON) // Ethernet
   {
     // Ethernet
@@ -119,7 +140,8 @@ void nw_init()
     influx.setEthernet(true);
     snprintf(buf, sizeof(buf), "%s(Ethernet)", addr.toString().c_str());
     view.setNwType("Ethernet");
-    udp = new EthernetUDP();
+    udpNtp = new EthernetUDP();
+    udpEchonet = new EthernetUDP();
   }
   else
   {
@@ -137,11 +159,15 @@ void nw_init()
     influx.setEthernet(false);
     snprintf(buf, sizeof(buf), "%s(WiFi)", addr.toString().c_str());
     view.setNwType("WiFi");
-    udp = new WiFiUDP();
+    udpNtp = new WiFiUDP();
+    udpEchonet = new WiFiUDP();
   }
   Serial.println(buf);
   view.setIpAddress(addr);
-  ntp.init(udp, "time.nist.gov", random(10000, 19999));
+  ntp.init(udpNtp, "time.nist.gov", random(10000, 19999));
+  echonetUdp.init(udpEchonet);
+  ecocute.init(&echonetUdp, "192.168.1.155", ecocuteCallback);
+  aircon.init(&echonetUdp, "192.168.1.158", airconCallback);
 }
 
 BME280<> BMESensor; // instantiate sensor
@@ -251,7 +277,32 @@ void loop()
       // 要求コマンド送信
       sm.request();
     }
+    // ecocute
+    ecocute.request();
+    // aircon
+    aircon.request();
   }
+
+  char buf[64];
+  if (bEco)
+  {
+    //text = "ecocute power={0},powerSum={1},tank={2} {3}\n".format(edt1, edt2, edt3, timestamp)
+    snprintf(buf, sizeof(buf), "ecocute power=%ld,powerSum=%ld,tank=%ld", ecocute.getPower(), ecocute.getTotalPower(), ecocute.getTank());
+    debugView.output(buf);
+    int res = influx.write(buf);
+    debugView.output(res);
+    bEco = false;
+  }
+  if (bAir)
+  {
+    //text = "aircon power={0},tempOut={1},tempRoom={2} {3}\n".format(edt1, edt2, edt3, timestamp)
+    snprintf(buf, sizeof(buf), "aircon power=%ld,tempOut=%ld,tempRoom=%ld", aircon.getPower(), aircon.getTempOut(), aircon.getTempRoom());
+    debugView.output(buf);
+    int res = influx.write(buf);
+    debugView.output(res);
+    bAir = false;
+  }
+
   d = cur - preView;
   if (d < 0)
     d += ULONG_MAX;

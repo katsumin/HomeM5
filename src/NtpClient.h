@@ -100,4 +100,6 @@ private:
     _pUdp->endPacket();
   }
 };
+
+NtpClient ntp;
 #endif

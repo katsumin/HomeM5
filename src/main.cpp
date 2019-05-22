@@ -167,7 +167,7 @@ void nw_init()
   // ecocute
   ecocute.init(&echonetUdp, ECOCUTE_ADDRESS, ecocuteCallback);
   // aircon
-  aircon.init(&echonetUdp, ECOCUTE_ADDRESS, airconCallback);
+  aircon.init(&echonetUdp, AIRCON_ADDRESS, airconCallback);
 }
 
 BME280<> BMESensor; // instantiate sensor

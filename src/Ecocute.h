@@ -85,7 +85,7 @@ private:
     ECHONET_DATA *pd = &ef->data;
     for (int i = 0; i < ef->opc; i++)
     {
-      uint16_t d = 0;
+      long d = 0;
       int s = pd->pdc;
       for (int j = 0; j < s; j++)
       {

@@ -105,8 +105,6 @@ boolean bEco = false;
 void ecocuteCallback(Ecocute *ec)
 {
   Serial.println("Ecocute callback");
-  view.setEcoPower(ec->getPower());
-  view.setEcoTank(ec->getTank());
   bEco = true;
 }
 
@@ -114,9 +112,6 @@ boolean bAir = false;
 void airconCallback(Aircon *ac)
 {
   Serial.println("Aircon callback");
-  view.setAirPower(ac->getPower());
-  view.setAirTempOut(ac->getTempOut());
-  view.setAirTempRoom(ac->getTempRoom());
   bAir = true;
 }
 
@@ -164,9 +159,14 @@ void nw_init()
   }
   Serial.println(buf);
   view.setIpAddress(addr);
+
+  // NTP
   ntp.init(udpNtp, "time.nist.gov", random(10000, 19999));
+  // echonet
   echonetUdp.init(udpEchonet);
+  // ecocute
   ecocute.init(&echonetUdp, "192.168.1.155", ecocuteCallback);
+  // aircon
   aircon.init(&echonetUdp, "192.168.1.158", airconCallback);
 }
 
@@ -221,6 +221,10 @@ void setup()
   Wire.begin(GPIO_NUM_21, GPIO_NUM_22); // initialize I2C that connects to sensor
   BMESensor.begin();                    // initalize bme280 sensor
   updateBme(true);
+
+  delay(500);
+  ecocute.request();
+  aircon.request();
 }
 
 boolean bNtp = true;
@@ -286,6 +290,8 @@ void loop()
   char buf[64];
   if (bEco)
   {
+    view.setEcoPower(ecocute.getPower());
+    view.setEcoTank(ecocute.getTank());
     //text = "ecocute power={0},powerSum={1},tank={2} {3}\n".format(edt1, edt2, edt3, timestamp)
     snprintf(buf, sizeof(buf), "ecocute power=%ld,powerSum=%ld,tank=%ld", ecocute.getPower(), ecocute.getTotalPower(), ecocute.getTank());
     debugView.output(buf);
@@ -295,6 +301,9 @@ void loop()
   }
   if (bAir)
   {
+    view.setAirPower(aircon.getPower());
+    view.setAirTempOut(aircon.getTempOut());
+    view.setAirTempRoom(aircon.getTempRoom());
     //text = "aircon power={0},tempOut={1},tempRoom={2} {3}\n".format(edt1, edt2, edt3, timestamp)
     snprintf(buf, sizeof(buf), "aircon power=%ld,tempOut=%ld,tempRoom=%ld", aircon.getPower(), aircon.getTempOut(), aircon.getTempRoom());
     debugView.output(buf);

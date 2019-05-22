@@ -13,5 +13,12 @@
 #define INFLUX_SERVER "influx"
 #define INFLUX_DB "smartmeter"
 
+// LAN
+#define ECOCUTE_ADDRESS "0.0.0.0"
+#define AIRCON_ADDRESS "0.0.0.0"
+
+// NTP
+#define NTP_SERVER "time.nist.gov"
+
 // Ethernet
 byte mac[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};

@@ -161,13 +161,13 @@ void nw_init()
   view.setIpAddress(addr);
 
   // NTP
-  ntp.init(udpNtp, "time.nist.gov", random(10000, 19999));
+  ntp.init(udpNtp, NTP_SERVER, random(10000, 19999));
   // echonet
   echonetUdp.init(udpEchonet);
   // ecocute
-  ecocute.init(&echonetUdp, "192.168.1.155", ecocuteCallback);
+  ecocute.init(&echonetUdp, ECOCUTE_ADDRESS, ecocuteCallback);
   // aircon
-  aircon.init(&echonetUdp, "192.168.1.158", airconCallback);
+  aircon.init(&echonetUdp, ECOCUTE_ADDRESS, airconCallback);
 }
 
 BME280<> BMESensor; // instantiate sensor

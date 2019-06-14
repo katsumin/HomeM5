@@ -10,7 +10,7 @@ Home Metrics By M5Stack
 
 ![構成図](chart.png)
 
-# Gafana によるブラウザ表示イメージ
+# Grafana によるブラウザ表示イメージ
 
 - 2019/5/30〜2019/6/2 の時系列推移（サンプル）
 
@@ -39,12 +39,16 @@ Home Metrics By M5Stack
 # 使用ライブラリ
 
 - ArduinoHttpClient ( https://github.com/arduino-libraries/ArduinoHttpClient?utm_source=platformio&utm_medium=piohome )
-  - InfluxDB 接続用 HttClient ライブラリ
+  - InfluxDB 接続用 HttpClient ライブラリ(Client クラスのラッパ)
 - BME280_Light ( https://github.com/EnviroMonitor/BME280_light?utm_source=platformio&utm_medium=piohome )
   - 温度・湿度・気圧センサー（BME280）制御ライブラリ
 - M5Stack ( https://github.com/m5stack/m5stack?utm_source=platformio&utm_medium=piohome )
   - M5Stack
+  - WiFiClient（Client の派生クラス）
+  - WiFiUDP（UDP の派生クラス）
 - Ethernet ( https://github.com/arduino-libraries/Ethernet?utm_source=platformio&utm_medium=piohome )
+  - EthernetClient（Client の派生クラス）
+  - EthernetUDP（UDP の派生クラス）
 
 # コンフィギュレーション
 

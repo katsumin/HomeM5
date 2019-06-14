@@ -16,6 +16,7 @@
 #include "EchonetUdp.h"
 #include "Ecocute.h"
 #include "Aircon.h"
+#include "log.h"
 #define SCK 18
 #define MISO 19
 #define MOSI 23
@@ -45,6 +46,8 @@ void bp35c0_monitoring_task(void *arm)
   vTaskDelete(NULL);
 }
 
+#define WAIT_REJOIN (10 * 60 * 1000) // 10 minutes
+unsigned long rcvEv29 = 0;
 void bp35c0_polling()
 {
   int res;
@@ -54,7 +57,8 @@ void bp35c0_polling()
   {
   case RCV_CODE::ERXUDP:
     // UDP受信
-    Serial.println("RXUDP");
+    debugView.output(buf);
+    sd_log.out(buf);
     break;
   case RCV_CODE::ERXUDP_E7:
     view.setPower(sm.getPower());
@@ -79,6 +83,7 @@ void bp35c0_polling()
     // 接続完了 → 要求コマンドを開始
     sm.setConnectState(CONNECT_STATE::CONNECTED);
     Serial.println("EV25");
+    sd_log.out("EV25");
     sm.request();
     break;
   case RCV_CODE::EVENT_26:
@@ -88,14 +93,30 @@ void bp35c0_polling()
   case RCV_CODE::EVENT_28:
     // PANA セッションの終了要求に対する応答がなくタイムアウトした(セッションは終了) → 再接続開始
     Serial.println("EV26-28");
+    sd_log.out("EV26-28");
     xTaskCreate(&bp35c0_monitoring_task, "bp35c0r", 4096, NULL, 5, NULL);
     break;
   case RCV_CODE::EVENT_29:
     // セッション期限切れ → 送信を止め、'EVENT 25'を待つ
     sm.setConnectState(CONNECT_STATE::CONNECTING);
     Serial.println("EV29");
+    sd_log.out("EV29");
+    rcvEv29 = millis();
     break;
   case RCV_CODE::TIMEOUT:
+    if (rcvEv29 > 0)
+    {
+      long d = millis() - rcvEv29;
+      if (d < 0)
+        d += ULONG_MAX;
+      if (d >= WAIT_REJOIN)
+      {
+        // EVENT29受信から一定時間過ぎてもEVENT25受信しなかったら、再接続開始
+        rcvEv29 = 0;
+        xTaskCreate(&bp35c0_monitoring_task, "bp35c0r", 4096, NULL, 5, NULL);
+      }
+    }
+    break;
   default:
     break;
   }
@@ -104,6 +125,7 @@ void bp35c0_polling()
 boolean bEco = false;
 void ecocuteCallback(Ecocute *ec)
 {
+  // sd_log.out("Ecocute callback");
   Serial.println("Ecocute callback");
   bEco = true;
 }
@@ -111,6 +133,7 @@ void ecocuteCallback(Ecocute *ec)
 boolean bAir = false;
 void airconCallback(Aircon *ac)
 {
+  // sd_log.out("Aircon callback");
   Serial.println("Aircon callback");
   bAir = true;
 }
@@ -346,6 +369,7 @@ void loop()
       time_t epoch = ntp.getEpocTime() + (millis() - ntp.getMillis()) / 1000;
       Serial.println(epoch);
       view.setTime(epoch);
+      sd_log.setTime(epoch);
       btnB.enable("NTP");
     }
   }

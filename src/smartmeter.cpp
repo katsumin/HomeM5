@@ -346,6 +346,7 @@ RCV_CODE SmartMeter::polling(char *data, size_t size)
   {
     len--;
     buf[len] = 0;
+    strncpy(data, buf, size);
     // _debugView->output(buf);
     Serial.println(buf);
     if (strncmp(buf, "ERXUDP", strlen("ERXUDP")) == 0)

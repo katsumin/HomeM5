@@ -41,13 +41,15 @@ void bp35c0_monitoring_task(void *arm)
   sm.disconnect();
   // delay(1000);
   sm.connect(PWD, BID);
+  for (int i = 0; i < 7; i++)
+    sd_log.out(sm.getScnannedParam(i));
 
   Serial.println("task stop");
   vTaskDelete(NULL);
 }
 
-#define WAIT_REJOIN (10 * 60 * 1000) // 10 minutes
-unsigned long rcvEv29 = 0;
+// #define WAIT_REJOIN (10 * 60 * 1000) // 10 minutes
+boolean rcvEv29 = false;
 void bp35c0_polling()
 {
   int res;
@@ -78,6 +80,12 @@ void bp35c0_polling()
     debugView.output(buf);
     res = influx.write(buf);
     debugView.output(res);
+    if (rcvEv29)
+    {
+      // EVENT29受信からEVENT25受信しなかったら、再接続開始
+      xTaskCreate(&bp35c0_monitoring_task, "bp35c0r", 4096, NULL, 5, NULL);
+      rcvEv29 = false;
+    }
     break;
   case RCV_CODE::EVENT_25:
     // 接続完了 → 要求コマンドを開始
@@ -85,6 +93,7 @@ void bp35c0_polling()
     Serial.println("EV25");
     sd_log.out("EV25");
     sm.request();
+    rcvEv29 = false;
     break;
   case RCV_CODE::EVENT_26:
     // セッション切断要求 → 再接続開始
@@ -101,22 +110,22 @@ void bp35c0_polling()
     sm.setConnectState(CONNECT_STATE::CONNECTING);
     Serial.println("EV29");
     sd_log.out("EV29");
-    rcvEv29 = millis();
+    rcvEv29 = true;
     break;
   case RCV_CODE::TIMEOUT:
-    if (rcvEv29 > 0)
-    {
-      long d = millis() - rcvEv29;
-      if (d < 0)
-        d += ULONG_MAX;
-      if (d >= WAIT_REJOIN)
-      {
-        // EVENT29受信から一定時間過ぎてもEVENT25受信しなかったら、再接続開始
-        rcvEv29 = 0;
-        xTaskCreate(&bp35c0_monitoring_task, "bp35c0r", 4096, NULL, 5, NULL);
-      }
-    }
-    break;
+    // if (rcvEv29 > 0)
+    // {
+    //   long d = millis() - rcvEv29;
+    //   if (d < 0)
+    //     d += ULONG_MAX;
+    //   if (d >= WAIT_REJOIN)
+    //   {
+    //     // EVENT29受信から一定時間過ぎてもEVENT25受信しなかったら、再接続開始
+    //     rcvEv29 = 0;
+    //     xTaskCreate(&bp35c0_monitoring_task, "bp35c0r", 4096, NULL, 5, NULL);
+    //   }
+    // }
+    // break;
   default:
     break;
   }
@@ -382,6 +391,6 @@ void loop()
       btnB.disable("NTP");
     }
   }
-  delay(10);
+  delay(1);
   M5.update();
 }

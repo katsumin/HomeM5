@@ -9,6 +9,7 @@ void SmartMeter::init()
   delay(500);                     // 500ms wait
 
   Serial2.begin(BP35C0_bps, SERIAL_8N1, 16, 17);
+  Serial2.setRxBufferSize(2048);
   Serial2.setTimeout(1000);
   // Serial2.println("WOPT 01");
   sendCmdAndWaitOk("SKSREG SFE 0"); // echoなし
@@ -112,7 +113,7 @@ int SmartMeter::waitOk()
       return -1;
     }
 
-    vTaskDelay(10 / portTICK_RATE_MS);
+    delay(1);
   }
 }
 
@@ -132,7 +133,7 @@ void SmartMeter::sendCmdAndWaitIpv6Address()
         break;
     }
 
-    vTaskDelay(10 / portTICK_RATE_MS);
+    delay(1);
   }
 }
 
@@ -192,7 +193,7 @@ void SmartMeter::scan()
             strcpy(_para[BP35C0_PAIR_ID], &buf[i]);
         }
       }
-      vTaskDelay(10 / portTICK_RATE_MS);
+      delay(1);
     }
   }
   for (int i = 0; i < 7; i++)

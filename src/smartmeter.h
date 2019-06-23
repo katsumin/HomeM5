@@ -124,6 +124,7 @@ public:
   inline void setDebugView(DebugView *view) { _debugView = view; };
   inline CONNECT_STATE getConnectState() { return _connectState; };
   inline void setConnectState(CONNECT_STATE state) { _connectState = state; };
+  inline char *getScnannedParam(int index) { return _para[index]; };
   /*
   初期化
   */

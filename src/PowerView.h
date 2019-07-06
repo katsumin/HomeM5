@@ -4,17 +4,18 @@
 #include "Free_Fonts.h"
 #include "DataStore.h"
 #include "Rtc.h"
+#include "View.h"
 
 #define WATT_HOUR_FS (1.5f)
 #define FS_PIXEL (40)
-class PowerView
+class PowerView : public View
 {
 private:
   // 1文字高
   int16_t _fontHeight;
   // font1高
   int16_t _font1Height;
-  boolean _enable;
+  // boolean _enable;
   DataStore *_store;
   Rtc *_rtc;
   int _currentIndex;
@@ -28,20 +29,19 @@ public:
   ~PowerView(){};
   inline void setDataStore(DataStore *store) { _store = store; };
   inline void setRtc(Rtc *rtc) { _rtc = rtc; };
-  inline boolean isEnable() { return _enable; };
-  inline void setEnable(boolean enable) { _enable = enable; };
-  void init()
+  // inline boolean isEnable() { return _enable; };
+  // inline void setEnable(boolean enable) { _enable = enable; };
+  virtual void init()
   {
     M5.Lcd.setFreeFont(FF9); // Select the font
     _fontHeight = M5.Lcd.fontHeight(GFXFF);
     M5.Lcd.setTextFont(1);
     M5.Lcd.setTextSize(1);
     _font1Height = M5.Lcd.fontHeight();
-    // M5.Lcd.fillRect(0, 0, 320, _font1Height + 2, BLACK);
     int32_t y = 16;
-    M5.Lcd.fillRect(0, y, M5.Lcd.width(), M5.Lcd.height() - y * 2, BLACK);
-    M5.Lcd.drawRoundRect(0, y, M5.Lcd.width(), M5.Lcd.height() - y * 2 - 4, 5, WHITE);
-    M5.Lcd.drawFastHLine(0, 90, M5.Lcd.width(), WHITE);
+    M5.Lcd.fillRect(0, y, M5.Lcd.width(), M5.Lcd.height() - y * 2, BLACK);             // ヘッダ以外を消去
+    M5.Lcd.drawRoundRect(0, y, M5.Lcd.width(), M5.Lcd.height() - y * 2 - 4, 5, WHITE); // 外枠
+    M5.Lcd.drawFastHLine(0, 90, M5.Lcd.width(), WHITE);                                // 区切り線
     _currentIndex = -1;
 
     // 瞬時値
@@ -53,9 +53,9 @@ public:
     M5.Lcd.drawString("Eco-cute  :      W", x, 45);
     M5.Lcd.drawString("Air-con   :      W", x, 65);
 
-    setEnable(true);
+    // setEnable(true);
   };
-  void update()
+  virtual void update()
   {
     if (isEnable())
     {
@@ -84,6 +84,8 @@ public:
       if (_currentIndex != index)
       {
         _currentIndex = index;
+
+        // グラフ表示
         int x = 17;
         int y = 155;
         int w = 5;
@@ -114,6 +116,7 @@ public:
           else
             M5.Lcd.drawRect(x + i * step_x, y + 1, w, FS_PIXEL, LIGHTGREY);
         }
+        // X軸
         M5.Lcd.setTextColor(GREENYELLOW);
         M5.Lcd.fillRect(1, y + FS_PIXEL + _font1Height * 2 - _font1Height / 2, M5.Lcd.width() - 2, _font1Height, BLACK);
         for (int i = 0; i < 5; i++)
@@ -123,11 +126,13 @@ public:
           snprintf(buf, sizeof(buf), "%02d:%02d", in / 2, (in % 2) * 30);
           M5.Lcd.drawString(buf, x - 1 + step_x * step, y + FS_PIXEL + _font1Height * 2 + 1);
         }
+        // Y軸
         M5.Lcd.setTextColor(WHITE);
         M5.Lcd.drawString(" 1.5kWh", x - 1, y - FS_PIXEL - _font1Height);
         M5.Lcd.drawString("0", x - w, y);
         M5.Lcd.drawString("-1.5kWh", x - 1, y + FS_PIXEL + _font1Height);
 
+        // 最新値表示
         M5.Lcd.setTextColor(YELLOW);
         M5.Lcd.setTextDatum(TL_DATUM);
         int prevIndex = WattHour::prevIndex(index);

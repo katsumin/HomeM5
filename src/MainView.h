@@ -3,8 +3,9 @@
 #include <M5Stack.h>
 #include "Free_Fonts.h"
 #include "DataStore.h"
+#include "View.h"
 
-class MainView
+class MainView : public View
 {
 private:
   // 1文字幅
@@ -13,8 +14,8 @@ private:
   int16_t _fontHeight;
   // font1高
   int16_t _font1Height;
-  //
-  boolean _enable;
+  // //
+  // boolean _enable;
   // DataStore
   DataStore *_store;
 
@@ -25,9 +26,9 @@ public:
   };
   ~MainView(){};
   inline void setDataStore(DataStore *store) { _store = store; };
-  inline boolean isEnable() { return _enable; };
-  inline void setEnable(boolean enable) { _enable = enable; };
-  void init()
+  // inline boolean isEnable() { return _enable; };
+  // inline void setEnable(boolean enable) { _enable = enable; };
+  virtual void init()
   {
     // setTime(0);
     M5.Lcd.setTextDatum(TL_DATUM);
@@ -74,9 +75,9 @@ public:
     M5.Lcd.drawString("temp. room :          C", x, y, GFXFF);
     y += _fontHeight;
     M5.Lcd.drawString("temp. out  :          C", x, y, GFXFF);
-    setEnable(true);
+    // setEnable(true);
   }
-  void update()
+  virtual void update()
   {
     if (isEnable())
     {

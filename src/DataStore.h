@@ -1,7 +1,6 @@
 #ifndef _DATASTORE_H_
 #define _DATASTORE_H_
 #include <M5Stack.h>
-#include <map>
 
 #define WATT_HOUR_POINTS (48)
 #define WATT_HOUR_LAST_POINT (WATT_HOUR_POINTS - 1)

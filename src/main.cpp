@@ -21,6 +21,7 @@
 #include "Aircon.h"
 #include "log.h"
 #include "DataStore.h"
+#include "View.h"
 #define SCK 18
 #define MISO 19
 #define MOSI 23
@@ -39,6 +40,7 @@ Rtc rtc;
 DataStore dataStore;
 MainView mainView(&dataStore);
 PowerView powerView(&dataStore, &rtc);
+ViewController viewController;
 
 /*
 スマートメータ接続タスク
@@ -236,27 +238,29 @@ CONNECT_STATE preState;
 void setup()
 {
   M5.begin();
+  // Serial.begin(115200);
 
   // DataStore
   dataStore.init();
 
   //  View
   M5.Lcd.clear();
-  powerView.init();
-  powerView.setEnable(false);
-  mainView.init();
+  // powerView.init();
+  // powerView.setEnable(false);
+  // mainView.init();
   headView.init();
   headView.setRtc(&rtc);
   sd_log.setRtc(&rtc);
-
-  Serial.begin(115200);
+  viewController.setView((const char *)"MAIN", &mainView);
+  viewController.setView((const char *)"POWER", &powerView);
+  viewController.change((const char *)"MAIN");
 
   // スマートメータ
   sm.setDebugView(&debugView);
   sm.init();
   preState = sm.getConnectState();
   btnA.enable("JOIN");
-  btnC.enable("POWER");
+  btnC.enable(viewController.getCurrentKey());
 
   // LAN
   btnB.disable("NTP");
@@ -397,20 +401,22 @@ void loop()
   else if (btnC.isEnable() && btnC.getButton()->wasPressed())
   {
     char *label = btnC.getLabel();
-    if (strncmp(label, "POWER", strlen("POWER")) == 0)
-    {
-      btnC.enable("MAIN");
-      powerView.init();
-      powerView.update();
-      mainView.setEnable(false);
-    }
-    else if (strncmp(label, "MAIN", strlen("MAIN")) == 0)
-    {
-      btnC.enable("POWER");
-      mainView.init();
-      mainView.update();
-      powerView.setEnable(false);
-    }
+    // if (strncmp(label, "POWER", strlen("POWER")) == 0)
+    // {
+    //   btnC.enable("MAIN");
+    //   powerView.init();
+    //   powerView.update();
+    //   mainView.setEnable(false);
+    // }
+    // else if (strncmp(label, "MAIN", strlen("MAIN")) == 0)
+    // {
+    //   btnC.enable("POWER");
+    //   mainView.init();
+    //   mainView.update();
+    //   powerView.setEnable(false);
+    // }
+    viewController.change(label);
+    btnC.enable(viewController.getCurrentKey());
   }
   delay(1);
   M5.update();

@@ -15,7 +15,6 @@ public:
     _db = String(db);
     _mutex = xSemaphoreCreateMutex();
   }
-  // void setClient(Client *client) { _pClient = client; }
   int write(const char *data);
   inline void setEthernet(boolean ether) { _isEthernet = ether; }
 
@@ -23,7 +22,6 @@ private:
   WiFiClient _wc;
   EthernetClient _ec;
   boolean _isEthernet;
-  // Client *_pClient;
   String _server;
   int _port;
   String _db;

@@ -47,7 +47,6 @@ public:
   inline void setCallback(void (*callback)(void *arg), void *arg)
   {
     CallbackObj *o = new CallbackObj(callback, arg);
-    // _callbacks.push_back(callback);
     _callbacks.push_back(o);
   };
 
@@ -58,7 +57,6 @@ private:
   uint8_t _packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming and outgoing packets
   unsigned long _response = 0;
   time_t _epochTime;
-  // std::list<void (*)(void *arg)> _callbacks;
   std::list<CallbackObj *> _callbacks;
 
 private:

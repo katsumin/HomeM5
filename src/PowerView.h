@@ -79,19 +79,15 @@ public:
       M5.Lcd.setFreeFont(FF9); // Select the font
       M5.Lcd.setTextFont(1);
       M5.Lcd.setTextSize(1);
-      // time_t epoch = _rtc->getTime();
       time_t epoch = _store->getWattHourPlusTime();
       int index = WattHour::time2Index(epoch);
-      // int index = _store->time2Index(epoch);
       if (_currentIndex != index)
       {
         _currentIndex = index;
         int x = 17;
         int y = 155;
         int w = 5;
-        // int h = FS_PIXEL;
         int step_x = w + 1;
-        // int scale_y = h;
         M5.Lcd.fillRect(x, y - FS_PIXEL, step_x * WATT_HOUR_POINTS + 1, FS_PIXEL * 2 + 2, BLACK);
         M5.Lcd.drawFastHLine(x, y, step_x * WATT_HOUR_POINTS, WHITE);
         M5.Lcd.drawRect(x - 1, y - FS_PIXEL - 1, step_x * WATT_HOUR_POINTS + 2, FS_PIXEL * 2 + 3, WHITE);
@@ -134,7 +130,6 @@ public:
 
         M5.Lcd.setTextColor(YELLOW);
         M5.Lcd.setTextDatum(TL_DATUM);
-        // M5.Lcd.setTextDatum(MR_DATUM);
         int prevIndex = WattHour::prevIndex(index);
         float f = _store->getWattHourPlusAtIndex(prevIndex);
         if (f >= 0)

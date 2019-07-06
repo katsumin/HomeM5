@@ -34,6 +34,8 @@ enum RCV_CODE
   EVENT_28,
   // セッション期限切れ
   EVENT_29,
+  // その他
+  OTHER,
 };
 
 enum CONNECT_STATE

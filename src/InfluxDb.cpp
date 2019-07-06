@@ -1,9 +1,13 @@
 #include "InfluxDb.h"
 #include <Ethernet.h>
 
+// #define TEST
 #define RETRY (3)
 int InfluxDb::write(const char *data)
 {
+#ifdef TEST
+  return 204;
+#endif
   xSemaphoreTake(_mutex, portMAX_DELAY);
   int res = 0;
   for (int i = 0; i < RETRY; i++)

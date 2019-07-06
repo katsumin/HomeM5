@@ -7,6 +7,7 @@ FunctionButton::FunctionButton(Button *button)
 
 void FunctionButton::_set(const char *label, uint32_t color)
 {
+  _label = (char *)label;
   uint16_t x_pos;
   uint16_t y_pos = M5.Lcd.height() - TEXT_HEIGHT;
   if (_button == &M5.BtnA)

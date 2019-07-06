@@ -1,10 +1,27 @@
 #ifndef _NTPCLIENT_H_
 #define _NTPCLIENT_H_
+#include <list>
 #include <Arduino.h>
 #include <Udp.h>
 
 const char timeServer[] = "time.nist.gov"; // time.nist.gov NTP server
 const int NTP_PACKET_SIZE = 48;            // NTP time stamp is in the first 48 bytes of the message
+
+class CallbackObj
+{
+private:
+  void (*_callback)(void *arg);
+  void *_arg;
+
+public:
+  CallbackObj(void (*callback)(void *arg), void *arg)
+  {
+    _callback = callback;
+    _arg = arg;
+  };
+  void (*getCallback())(void *arg) { return _callback; };
+  inline void *getArg() { return _arg; };
+};
 
 class NtpClient
 {
@@ -25,22 +42,30 @@ public:
       Serial.println(_localPort);
     }
   }
-  inline unsigned long getMillis() { return _getMillis; };
+  inline unsigned long getResponseTime() { return _response; };
   inline time_t getEpocTime() { return _epochTime; };
+  inline void setCallback(void (*callback)(void *arg), void *arg)
+  {
+    CallbackObj *o = new CallbackObj(callback, arg);
+    // _callbacks.push_back(callback);
+    _callbacks.push_back(o);
+  };
 
 private:
   char *_server;
   UDP *_pUdp = nullptr;
   unsigned int _localPort = 8888;         // local port to listen for UDP packets
   uint8_t _packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming and outgoing packets
-  unsigned long _getMillis = 0;
+  unsigned long _response = 0;
   time_t _epochTime;
+  // std::list<void (*)(void *arg)> _callbacks;
+  std::list<CallbackObj *> _callbacks;
 
 private:
   void static _task(void *arm)
   {
     NtpClient *ntp = (NtpClient *)arm;
-    ntp->_getMillis = 0;
+    ntp->_response = 0;
     Serial.println("ntp start");
     UDP *pUdp = ntp->_pUdp;
     while (true)
@@ -55,7 +80,7 @@ private:
         {
           uint8_t buf[NTP_PACKET_SIZE];     //buffer to hold incoming and outgoing packets
           pUdp->read(buf, NTP_PACKET_SIZE); // read the packet into the buffer
-          ntp->_getMillis = millis();
+          ntp->_response = millis();
           Serial.println("recieved");
           unsigned long highWord = word(buf[40], buf[41]);
           unsigned long lowWord = word(buf[42], buf[43]);
@@ -66,6 +91,13 @@ private:
           const unsigned long seventyYears = 2208988800UL;
           // subtract seventy years:
           ntp->_epochTime = secsSince1900 - seventyYears;
+          for (auto it = ntp->_callbacks.begin(); it != ntp->_callbacks.end(); it++)
+          {
+            void (*p)(void *arg) = (*it)->getCallback();
+            void *arg = (*it)->getArg();
+            p(arg);
+            // (*it)(it->);
+          }
           break;
         }
       }
@@ -101,5 +133,4 @@ private:
   }
 };
 
-NtpClient ntp;
 #endif

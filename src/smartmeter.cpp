@@ -341,15 +341,16 @@ RCV_CODE SmartMeter::parse(u_char *binBuf, size_t size)
 RCV_CODE SmartMeter::polling(char *data, size_t size)
 {
   RCV_CODE r = TIMEOUT;
-  char buf[1024];
+  char buf[1536];
   size_t len = Serial2.readBytesUntil(0x0a, buf, sizeof(buf));
   if (len > 0)
   {
     len--;
     buf[len] = 0;
     strncpy(data, buf, size);
+    r = OTHER;
     // _debugView->output(buf);
-    Serial.println(buf);
+    // Serial.println(buf);
     if (strncmp(buf, "ERXUDP", strlen("ERXUDP")) == 0)
     {
       // UDP受信

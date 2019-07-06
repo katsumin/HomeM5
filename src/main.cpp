@@ -12,22 +12,33 @@
 #include "debugView.h"
 #include "FunctionButton.h"
 #include "MainView.h"
-#include "NtpClient.h"
+#include "HeadView.h"
+#include "PowerView.h"
+//#include "NtpClient.h"
+#include "Rtc.h"
 #include "EchonetUdp.h"
 #include "Ecocute.h"
 #include "Aircon.h"
 #include "log.h"
+#include "DataStore.h"
 #define SCK 18
 #define MISO 19
 #define MOSI 23
 #define CS 26
+// #define TEST
 
 // instances
 FunctionButton btnA(&M5.BtnA);
 FunctionButton btnB(&M5.BtnB);
+FunctionButton btnC(&M5.BtnC);
 DebugView debugView(0, 100, 320, SCROLL_SIZE * 10);
 InfluxDb influx(INFLUX_SERVER, INFLUX_DB);
 SmartMeter sm;
+NtpClient ntp;
+Rtc rtc;
+DataStore dataStore;
+MainView mainView(&dataStore);
+PowerView powerView(&dataStore, &rtc);
 
 /*
 スマートメータ接続タスク
@@ -39,39 +50,38 @@ void bp35c0_monitoring_task(void *arm)
   // bTaskRunning = true;
   // スマートメータ接続
   sm.disconnect();
-  // delay(1000);
+  delay(500);
   sm.connect(PWD, BID);
-  for (int i = 0; i < 7; i++)
-    sd_log.out(sm.getScnannedParam(i));
 
   Serial.println("task stop");
   vTaskDelete(NULL);
 }
 
-// #define WAIT_REJOIN (10 * 60 * 1000) // 10 minutes
+#define TIMEZONE 9 * 3600
 boolean rcvEv29 = false;
 void bp35c0_polling()
 {
   int res;
-  char buf[256];
+  char buf[1024];
   RCV_CODE code = sm.polling(buf, sizeof(buf));
   switch (code)
   {
   case RCV_CODE::ERXUDP:
+  case RCV_CODE::OTHER:
     // UDP受信
     debugView.output(buf);
     sd_log.out(buf);
     break;
   case RCV_CODE::ERXUDP_E7:
-    view.setPower(sm.getPower());
+    dataStore.setPower(sm.getPower());
     snprintf(buf, sizeof(buf), "power value=%ld", sm.getPower());
     debugView.output(buf);
     res = influx.write(buf);
     debugView.output(res);
     break;
   case RCV_CODE::ERXUDP_EAB:
-    view.setWattHourPlus(sm.getWattHourPlus());
-    view.setWattHoueMinus(sm.getWattHourMinus());
+    dataStore.setWattHourPlus(sm.getWattHourPlus(), sm.getTimePlus() + TIMEZONE);
+    dataStore.setWattHourMinus(sm.getWattHourMinus(), sm.getTimeMinus() + TIMEZONE);
     snprintf(buf, sizeof(buf), "+power value=%.1f %ld000000000", sm.getWattHourPlus(), sm.getTimePlus());
     debugView.output(buf);
     res = influx.write(buf);
@@ -113,19 +123,6 @@ void bp35c0_polling()
     rcvEv29 = true;
     break;
   case RCV_CODE::TIMEOUT:
-    // if (rcvEv29 > 0)
-    // {
-    //   long d = millis() - rcvEv29;
-    //   if (d < 0)
-    //     d += ULONG_MAX;
-    //   if (d >= WAIT_REJOIN)
-    //   {
-    //     // EVENT29受信から一定時間過ぎてもEVENT25受信しなかったら、再接続開始
-    //     rcvEv29 = 0;
-    //     xTaskCreate(&bp35c0_monitoring_task, "bp35c0r", 4096, NULL, 5, NULL);
-    //   }
-    // }
-    // break;
   default:
     break;
   }
@@ -147,6 +144,12 @@ void airconCallback(Aircon *ac)
   bAir = true;
 }
 
+void callbackNtp(void *arg)
+{
+  Serial.println("callbacked !");
+  btnB.enable("NTP");
+}
+
 WiFiMulti wm;
 void nw_init()
 {
@@ -160,21 +163,21 @@ void nw_init()
   if (Ethernet.linkStatus() == LinkON) // Ethernet
   {
     // Ethernet
-    Ethernet.begin(mac);
     Serial.println("Ethernet connected");
     Serial.println("IP address: ");
+    Ethernet.begin(mac);
     addr = Ethernet.localIP();
     influx.setEthernet(true);
     snprintf(buf, sizeof(buf), "%s(Ethernet)", addr.toString().c_str());
-    view.setNwType("Ethernet");
+    headView.setNwType("Ethernet");
     udpNtp = new EthernetUDP();
     udpEchonet = new EthernetUDP();
   }
   else
   {
     // WiFi
-    wm.addAP(WIFI_SSID, WIFI_PASS);
     Serial.print("Connecting to WIFI");
+    wm.addAP(WIFI_SSID, WIFI_PASS);
     while (wm.run() != WL_CONNECTED)
     {
       Serial.print(".");
@@ -185,15 +188,17 @@ void nw_init()
     addr = WiFi.localIP();
     influx.setEthernet(false);
     snprintf(buf, sizeof(buf), "%s(WiFi)", addr.toString().c_str());
-    view.setNwType("WiFi");
+    headView.setNwType("WiFi");
     udpNtp = new WiFiUDP();
     udpEchonet = new WiFiUDP();
   }
   Serial.println(buf);
-  view.setIpAddress(addr);
+  headView.setIpAddress(addr);
 
-  // NTP
-  ntp.init(udpNtp, NTP_SERVER, random(10000, 19999));
+  // RTC
+  ntp.init(udpNtp, (char *)NTP_SERVER, random(10000, 19999));
+  ntp.setCallback(callbackNtp, nullptr);
+  rtc.init(&ntp);
   // echonet
   echonetUdp.init(udpEchonet);
   // ecocute
@@ -214,9 +219,9 @@ void updateBme(boolean withInflux)
     Serial.println(p);
     delay(100);
   }
-  view.setTemperature(BMESensor.temperature);
-  view.setHumidity(BMESensor.humidity);
-  view.setPressure(BMESensor.pressure / 100.0F);
+  dataStore.setTemperature(BMESensor.temperature);
+  dataStore.setHumidity(BMESensor.humidity);
+  dataStore.setPressure(BMESensor.pressure / 100.0F);
   if (withInflux)
   {
     char buf[64];
@@ -232,9 +237,17 @@ void setup()
 {
   M5.begin();
 
+  // DataStore
+  dataStore.init();
+
   //  View
   M5.Lcd.clear();
-  view.init();
+  powerView.init();
+  powerView.setEnable(false);
+  mainView.init();
+  headView.init();
+  headView.setRtc(&rtc);
+  sd_log.setRtc(&rtc);
 
   Serial.begin(115200);
 
@@ -243,23 +256,25 @@ void setup()
   sm.init();
   preState = sm.getConnectState();
   btnA.enable("JOIN");
+  btnC.enable("POWER");
 
   // LAN
-  nw_init();
-  ntp.update();
   btnB.disable("NTP");
+  nw_init();
 
   // Sensor
   Wire.begin(GPIO_NUM_21, GPIO_NUM_22); // initialize I2C that connects to sensor
-  BMESensor.begin();                    // initalize bme280 sensor
+#ifndef TEST
+  BMESensor.begin(); // initalize bme280 sensor
   updateBme(true);
-
-  delay(500);
+#endif
+  // delay(1000);
   ecocute.request();
   aircon.request();
 }
 
-boolean bNtp = true;
+time_t rtcTest = 0;
+float wattHourTest = 0.0;
 unsigned long preMeas = millis();
 unsigned long preView = preMeas;
 #define INTERVAL (120 * 1000)
@@ -280,6 +295,8 @@ void loop()
       break;
     case CONNECT_STATE::CONNECTING:
       btnA.disable("CONNECTING");
+      for (int i = 0; i < 7; i++)
+        sd_log.out(sm.getScnannedParam(i));
       break;
     case CONNECT_STATE::SCANNING:
       btnA.disable("SCANNING");
@@ -305,7 +322,9 @@ void loop()
     debugView.output(buf);
 
     // BME280
+#ifndef TEST
     updateBme(true);
+#endif
 
     // smartmeter
     if (curState == CONNECT_STATE::CONNECTED)
@@ -322,9 +341,8 @@ void loop()
   char buf[64];
   if (bEco)
   {
-    view.setEcoPower(ecocute.getPower());
-    view.setEcoTank(ecocute.getTank());
-    //text = "ecocute power={0},powerSum={1},tank={2} {3}\n".format(edt1, edt2, edt3, timestamp)
+    dataStore.setEcoPower(ecocute.getPower());
+    dataStore.setEcoTank(ecocute.getTank());
     snprintf(buf, sizeof(buf), "ecocute power=%ld,powerSum=%ld,tank=%ld", ecocute.getPower(), ecocute.getTotalPower(), ecocute.getTank());
     debugView.output(buf);
     int res = influx.write(buf);
@@ -333,10 +351,9 @@ void loop()
   }
   if (bAir)
   {
-    view.setAirPower(aircon.getPower());
-    view.setAirTempOut(aircon.getTempOut());
-    view.setAirTempRoom(aircon.getTempRoom());
-    //text = "aircon power={0},tempOut={1},tempRoom={2} {3}\n".format(edt1, edt2, edt3, timestamp)
+    dataStore.setAirPower(aircon.getPower());
+    dataStore.setAirTempOut(aircon.getTempOut());
+    dataStore.setAirTempRoom(aircon.getTempRoom());
     snprintf(buf, sizeof(buf), "aircon power=%ld,tempOut=%ld,tempRoom=%ld", aircon.getPower(), aircon.getTempOut(), aircon.getTempRoom());
     debugView.output(buf);
     int res = influx.write(buf);
@@ -350,9 +367,11 @@ void loop()
   if (d >= VIEW_INTERVAL)
   {
     preView = cur;
-    view.update();
+    mainView.update();
+    powerView.update();
+    headView.update();
   }
-  if (btnA.getButton()->wasPressed())
+  if (btnA.isEnable() && btnA.getButton()->wasPressed())
   {
     switch (curState)
     {
@@ -370,25 +389,27 @@ void loop()
       break;
     }
   }
-  if (bNtp)
+  else if (btnB.isEnable() && btnB.getButton()->wasPressed())
   {
-    if (ntp.getMillis() > 0)
-    {
-      bNtp = false;
-      time_t epoch = ntp.getEpocTime() + (millis() - ntp.getMillis()) / 1000;
-      Serial.println(epoch);
-      view.setTime(epoch);
-      sd_log.setTime(epoch);
-      btnB.enable("NTP");
-    }
+    rtc.adjust();
+    btnB.disable("NTP");
   }
-  else
+  else if (btnC.isEnable() && btnC.getButton()->wasPressed())
   {
-    if (btnB.getButton()->wasReleased())
+    char *label = btnC.getLabel();
+    if (strncmp(label, "POWER", strlen("POWER")) == 0)
     {
-      ntp.update();
-      bNtp = true;
-      btnB.disable("NTP");
+      btnC.enable("MAIN");
+      powerView.init();
+      powerView.update();
+      mainView.setEnable(false);
+    }
+    else if (strncmp(label, "MAIN", strlen("MAIN")) == 0)
+    {
+      btnC.enable("POWER");
+      mainView.init();
+      mainView.update();
+      powerView.setEnable(false);
     }
   }
   delay(1);

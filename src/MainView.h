@@ -31,6 +31,7 @@ public:
   virtual void init()
   {
     // setTime(0);
+    M5.Lcd.setTextColor(WHITE);
     M5.Lcd.setTextDatum(TL_DATUM);
     M5.Lcd.setFreeFont(FF9); // Select the font
     _fontHeight = M5.Lcd.fontHeight(GFXFF);

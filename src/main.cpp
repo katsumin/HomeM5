@@ -14,7 +14,6 @@
 #include "MainView.h"
 #include "HeadView.h"
 #include "PowerView.h"
-//#include "NtpClient.h"
 #include "Rtc.h"
 #include "EchonetUdp.h"
 #include "Ecocute.h"
@@ -234,33 +233,31 @@ void updateBme(boolean withInflux)
   }
 }
 
+#define VIEWKEY_MAIN ((const char *)"MAIN")
+#define VIEWKEY_POWER ((const char *)"POWER")
 CONNECT_STATE preState;
 void setup()
 {
   M5.begin();
-  // Serial.begin(115200);
 
   // DataStore
   dataStore.init();
 
   //  View
   M5.Lcd.clear();
-  // powerView.init();
-  // powerView.setEnable(false);
-  // mainView.init();
   headView.init();
   headView.setRtc(&rtc);
   sd_log.setRtc(&rtc);
-  viewController.setView((const char *)"MAIN", &mainView);
-  viewController.setView((const char *)"POWER", &powerView);
-  viewController.change((const char *)"MAIN");
+  viewController.setView(VIEWKEY_MAIN, &mainView, VIEWKEY_POWER);
+  viewController.setView(VIEWKEY_POWER, &powerView, VIEWKEY_MAIN);
+  viewController.changeNext();
 
   // スマートメータ
   sm.setDebugView(&debugView);
   sm.init();
   preState = sm.getConnectState();
   btnA.enable("JOIN");
-  btnC.enable(viewController.getCurrentKey());
+  btnC.enable(viewController.getNextKey());
 
   // LAN
   btnB.disable("NTP");
@@ -371,9 +368,8 @@ void loop()
   if (d >= VIEW_INTERVAL)
   {
     preView = cur;
-    mainView.update();
-    powerView.update();
     headView.update();
+    viewController.update();
   }
   if (btnA.isEnable() && btnA.getButton()->wasPressed())
   {
@@ -400,7 +396,7 @@ void loop()
   }
   else if (btnC.isEnable() && btnC.getButton()->wasPressed())
   {
-    char *label = btnC.getLabel();
+    // char *label = btnC.getLabel();
     // if (strncmp(label, "POWER", strlen("POWER")) == 0)
     // {
     //   btnC.enable("MAIN");
@@ -415,8 +411,8 @@ void loop()
     //   mainView.update();
     //   powerView.setEnable(false);
     // }
-    viewController.change(label);
-    btnC.enable(viewController.getCurrentKey());
+    viewController.changeNext();
+    btnC.enable(viewController.getNextKey());
   }
   delay(1);
   M5.update();

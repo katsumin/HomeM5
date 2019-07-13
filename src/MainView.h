@@ -14,8 +14,6 @@ private:
   int16_t _fontHeight;
   // font1高
   int16_t _font1Height;
-  // //
-  // boolean _enable;
   // DataStore
   DataStore *_store;
 
@@ -26,11 +24,8 @@ public:
   };
   ~MainView(){};
   inline void setDataStore(DataStore *store) { _store = store; };
-  // inline boolean isEnable() { return _enable; };
-  // inline void setEnable(boolean enable) { _enable = enable; };
   virtual void init()
   {
-    // setTime(0);
     M5.Lcd.setTextColor(WHITE);
     M5.Lcd.setTextDatum(TL_DATUM);
     M5.Lcd.setFreeFont(FF9); // Select the font
@@ -38,10 +33,8 @@ public:
     M5.Lcd.setTextFont(1);
     M5.Lcd.setTextSize(1);
     _font1Height = M5.Lcd.fontHeight();
-    // M5.Lcd.fillRect(0, 0, 320, _font1Height + 2, BLACK);
     int32_t y = _font1Height * 2;
     M5.Lcd.fillRect(0, 16, M5.Lcd.width(), M5.Lcd.height() - 16 * 2, BLACK);
-    // M5.Lcd.fillRect(0, y, 320, y + _fontHeight * 10, BLACK);
     M5.Lcd.drawString("BME280", 0, y, GFXFF);
     y += _fontHeight * 3;
     M5.Lcd.drawString("Smart", 0, y, GFXFF);
@@ -50,7 +43,6 @@ public:
     M5.Lcd.drawString("Ecocute", 0, y, GFXFF);
     y += _fontHeight * 2;
     M5.Lcd.drawString("Air-con", 0, y, GFXFF);
-    // _fontWidth = M5.Lcd.textWidth(" ", GFXFF);
     _fontWidth = 11;
     int32_t x = _fontWidth * 4;
     y = _font1Height * 2;
@@ -76,7 +68,6 @@ public:
     M5.Lcd.drawString("temp. room :          C", x, y, GFXFF);
     y += _fontHeight;
     M5.Lcd.drawString("temp. out  :          C", x, y, GFXFF);
-    // setEnable(true);
   }
   virtual void update()
   {
@@ -98,7 +89,6 @@ public:
       snprintf(buf, sizeof(buf), "%9.1f", _store->getPressure());
       M5.Lcd.drawString(buf, x, y, GFXFF);
       y += _fontHeight;
-      // x = 14 * _fontWidth;
       snprintf(buf, sizeof(buf), "%9ld", _store->getPower());
       M5.Lcd.drawString(buf, x, y, GFXFF);
       y += _fontHeight;

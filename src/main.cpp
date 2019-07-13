@@ -304,10 +304,14 @@ void loop()
       break;
     }
   }
+#ifndef TEST
   if (curState == CONNECT_STATE::CONNECTED || curState == CONNECT_STATE::CONNECTING)
   {
     bp35c0_polling();
   }
+#else
+  bp35c0_polling();
+#endif
   preState = curState;
 
   long cur = millis();
@@ -396,21 +400,6 @@ void loop()
   }
   else if (btnC.isEnable() && btnC.getButton()->wasPressed())
   {
-    // char *label = btnC.getLabel();
-    // if (strncmp(label, "POWER", strlen("POWER")) == 0)
-    // {
-    //   btnC.enable("MAIN");
-    //   powerView.init();
-    //   powerView.update();
-    //   mainView.setEnable(false);
-    // }
-    // else if (strncmp(label, "MAIN", strlen("MAIN")) == 0)
-    // {
-    //   btnC.enable("POWER");
-    //   mainView.init();
-    //   mainView.update();
-    //   powerView.setEnable(false);
-    // }
     viewController.changeNext();
     btnC.enable(viewController.getNextKey());
   }

@@ -15,7 +15,7 @@ private:
   int16_t _fontHeight;
   // font1高
   int16_t _font1Height;
-  // boolean _enable;
+  // DataStore
   DataStore *_store;
   Rtc *_rtc;
   int _currentIndex;
@@ -29,8 +29,6 @@ public:
   ~PowerView(){};
   inline void setDataStore(DataStore *store) { _store = store; };
   inline void setRtc(Rtc *rtc) { _rtc = rtc; };
-  // inline boolean isEnable() { return _enable; };
-  // inline void setEnable(boolean enable) { _enable = enable; };
   virtual void init()
   {
     M5.Lcd.setFreeFont(FF9); // Select the font

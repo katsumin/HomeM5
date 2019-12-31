@@ -34,9 +34,6 @@ public:
         udp->beginPacket(_server, 3610); // Echonet requests are to port 3610
         udp->write(_cmd_buf, sizeof(_cmd_buf));
         udp->endPacket();
-        // _pSendUdp->beginPacket(_server, 3610); // Echonet requests are to port 3610
-        // _pSendUdp->write(_cmd_buf, sizeof(_cmd_buf));
-        // _pSendUdp->endPacket();
     };
 
 private:

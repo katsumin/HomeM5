@@ -2,170 +2,185 @@
 #define _SMARTMETER_H_
 
 #include <Arduino.h>
-#include "echonet.h"
-#include "debugView.h"
-#define BP35C0_CHANNEL 0
-#define BP35C0_CHANNEL_PAGE 1
-#define BP35C0_PAN_ID 2
-#define BP35C0_ADDR 3
-#define BP35C0_LQI 4
-#define BP35C0_SIDE 5
-#define BP35C0_PAIR_ID 6
-#define BP35C0_RSTn GPIO_NUM_5
-#define BP35C0_bps 115200
+#include <Udp.h>
+#include "DataStore.h"
+#include "EchonetUdp.h"
+#define TIMEZONE 9 * 3600
 
-enum RCV_CODE
+class SmartMeter
 {
-  // タイムアウト
-  TIMEOUT,
-  // UDP受信
-  ERXUDP,
-  // UDP受信/瞬時電力
-  ERXUDP_E7,
-  // UDP受信/積算電力量
-  ERXUDP_EAB,
-  // PANAによる接続が完了
-  EVENT_25,
-  // 接続相手からセッション終了要求を受信した
-  EVENT_26,
-  // PANA セッションの終了に成功した
-  EVENT_27,
-  // PANA セッションの終了要求に対する応答がなくタイムアウトした (セッションは終了)
-  EVENT_28,
-  // セッション期限切れ
-  EVENT_29,
-  // その他
-  OTHER,
-};
-
-enum CONNECT_STATE
-{
-  // スキャン中
-  SCANNING,
-  // 接続中
-  CONNECTING,
-  // 接続済み
-  CONNECTED,
-  // 切断済み
-  DISCONNECTED,
-};
-
-class SmartMeter : public Echonet
-{
-private:
-  char _para[7][20];
-  char _addr[64];
-  static u_char _cmd_buf[];
-  float _k = 0.1;
-  long _power;
-  float _powerPlus;
-  float _powerMinus;
-  time_t _timePlus;
-  time_t _timeMinus;
-  DebugView *_debugView = NULL;
-  CONNECT_STATE _connectState;
-
-private:
-  void parseE1(u_char *edt);
-  void parseE7(u_char *edt);
-  void parseEAEB(u_char *edt, time_t *t, float *p);
-  /* 
-  チャンネル・スキャン
-  [引数]
-   なし
-  [戻り値]
-   void
-  [副作用]
-   ・_para配列に通知されたPAN情報が格納される
-  */
-  void scan();
-  /*
-  OK文字列の受信待ち
-  [引数]
-   なし
-  [戻り値]
-   0: OKを受信した
-   -1: OKを受信せず、タイムアウトした
-  */
-  int waitOk();
-  /*
-  IPV6アドレス取得
-  [引数]
-   なし
-  [戻り値]
-   void
-  [副作用]
-  ・IPV6アドレスが、addr配列に格納される。
-  */
-  void sendCmdAndWaitIpv6Address();
-  /*
-  コマンド送信
-  [引数]
-   コマンド文字列
-  [戻り値]
-   0: コマンド送信後、OKを受信した
-   -1: コマンド送信後、OKを受信せずタイムアウトした
-  */
-  int sendCmdAndWaitOk(const char *cmd);
-  /*
-  受信バッファの解析
-  [引数]
-   バッファ
-   バッファサイズ
-  [戻り値]
-   enum RCV_CODE
-  */
-  RCV_CODE parse(u_char *buf, size_t size);
-
 public:
-  inline long getPower() { return _power; };
-  inline float getWattHourPlus() { return _powerPlus; };
-  inline float getWattHourMinus() { return _powerMinus; };
-  inline time_t getTimePlus() { return _timePlus; };
-  inline time_t getTimeMinus() { return _timeMinus; };
-  inline void setDebugView(DebugView *view) { _debugView = view; };
-  inline CONNECT_STATE getConnectState() { return _connectState; };
-  inline void setConnectState(CONNECT_STATE state) { _connectState = state; };
-  inline char *getScnannedParam(int index) { return _para[index]; };
-  /*
-  初期化
-  */
-  void init();
-  /*
-  スマートメーターへの接続
-  [引数]
-   pwd: Bルート・パスワード
-   bid: Bルート・ID
-  [戻り値]
-   void
-  [副作用]
-   ・addr配列に、ipv6アドレスが格納される
-  */
-  void connect(const char *pwd, const char *bid);
-  /*
-  スマートメータからの切断
-  [引数]
-   なし
-  [戻り値]
-   void
-  */
-  void disconnect();
-  /*
-  取得要求
-  [戻り値]
-   0: コマンド送信後、OKを受信した
-   -1: コマンド送信後、OKを受信せずタイムアウトした
-  */
-  int request();
-  /*
-  受信待ち
-  [引数]
-   data: 受信データ格納バッファ（呼び出し側で確保すること）
-   len: バッファサイズ
-  [戻り値]
-   enum RCV_CODE
-  */
-  RCV_CODE polling(char *data, size_t len);
+    inline long getPower() { return _power; };
+    inline void setPower(long power) { _power = power; };
+    inline float getWattHourPlus() { return _powerPlus; };
+    inline void setWattHourPlus(float powerPlus) { _powerPlus = powerPlus; }
+    inline float getWattHourMinus() { return _powerMinus; };
+    inline void setWattHourMinus(float powerMinus) { _powerMinus = powerMinus; }
+    inline time_t getTimePlus() { return _timePlus; };
+    inline void setTimePlus(time_t timePlus) { _timePlus = timePlus; }
+    inline time_t getTimeMinus() { return _timeMinus; };
+    inline void setTimeMinus(time_t timeMinus) { _timeMinus = timeMinus; }
+
+    void init(EchonetUdp *pUdp, const char *server, void (*callback)(SmartMeter *))
+    {
+        _server.fromString(server);
+        _pEchonetUdp = pUdp;
+        _pEchonetUdp->setCallback(_server, &parse, this);
+        _callback = callback;
+        if (_pEchonetUdp->getEthernet())
+            _pSendUdp = new EthernetUDP();
+        else
+            _pSendUdp = new WiFiUDP();
+    };
+    void request()
+    {
+        Serial.print("request -> ");
+        Serial.println(_server);
+        UDP *udp = _pEchonetUdp->getUdp();
+        udp->beginPacket(_server, 3610); // Echonet requests are to port 3610
+        udp->write(_cmd_buf, sizeof(_cmd_buf));
+        udp->endPacket();
+        // _pSendUdp->beginPacket(_server, 3610); // Echonet requests are to port 3610
+        // _pSendUdp->write(_cmd_buf, sizeof(_cmd_buf));
+        // _pSendUdp->endPacket();
+    };
+    inline void setDataStore(DataStore *store) { _dataStore = store; };
+
+private:
+    UDP *_pSendUdp;
+    DataStore *_dataStore;
+    float _k = 0.1;
+    long _power;
+    float _powerPlus;
+    float _powerMinus;
+    time_t _timePlus;
+    time_t _timeMinus;
+    IPAddress _server;
+    EchonetUdp *_pEchonetUdp = nullptr;
+    void (*_callback)(SmartMeter *) = nullptr;
+    u_char _cmd_buf[20] = {
+        0x10,
+        0x81, // EHD
+        0x00,
+        0x01, // TID
+        0x05,
+        0xff,
+        0x01, // SEOJ
+        0x02,
+        0x88,
+        0x01, // DEOJ
+        0x62, // ESV(プロパティ値読み出し要求)
+        0x04, // OPC(4data)
+        0xe7, // EPC()
+        0x00, // PDC
+        0xe1, // EPC()
+        0x00, // PDC
+        0xea, // EPC()
+        0x00, // PDC
+        0xeb, // EPC()
+        0x00, // PDC
+    };
+    void parseE1(u_char *edt)
+    {
+        switch (edt[0])
+        {
+        case 0x00: // 1kWh
+            _k = 1;
+            break;
+        case 0x01: // 0.1kWh
+            _k = 0.1;
+            break;
+        case 0x02: // 0.01kWh
+            _k = 0.01;
+            break;
+        case 0x03: // 0.001kWh
+            _k = 0.001;
+            break;
+        case 0x04: // 0.0001kWh
+            _k = 0.0001;
+            break;
+        case 0x0a: // 10kWh
+            _k = 10.0;
+            break;
+        case 0x0b: // 100kWh
+            _k = 100.0;
+            break;
+        case 0x0c: // 1000kWh
+            _k = 1000.0;
+            break;
+        case 0x0d: // 10000kWh
+            _k = 10000.0;
+            break;
+        default:
+            break;
+        }
+    }
+    void parseE7(u_char *edt)
+    {
+        long v = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            v <<= 8;
+            v |= edt[i];
+        }
+        setPower(v);
+        Serial.printf("%ld[w]", _power);
+        Serial.println();
+    }
+    void parseEAEB(u_char *edt, time_t *t, float *p)
+    {
+        tm tm;
+        tm.tm_year = (edt[0] << 8 | edt[1]) - 1900;
+        tm.tm_mon = edt[2] - 1;
+        tm.tm_mday = edt[3];
+        tm.tm_hour = edt[4];
+        tm.tm_min = edt[5];
+        tm.tm_sec = edt[6];
+        *t = mktime(&tm);
+        long v = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            v <<= 8;
+            v |= edt[i + 7];
+        }
+        *p = (float)v * _k;
+        Serial.printf("%04d/%02d/%02d %02d:%02d:%02d, %10.2f[kWh]", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, *p);
+        Serial.println();
+    }
+    static void parse(ECHONET_FRAME *ef, void *obj)
+    {
+        SmartMeter *sm = (SmartMeter *)obj;
+        ECHONET_DATA *pd = &ef->data;
+        for (int i = 0; i < ef->opc; i++)
+        {
+            time_t t;
+            float p;
+            // uint16_t d = 0;
+            int s = pd->pdc;
+            switch (pd->epc)
+            {
+            case 0xe7: // 瞬時電力
+                sm->parseE7(pd->edt);
+                sm->_dataStore->setPower(sm->getPower());
+                break;
+            case 0xea: // 積算電力量（正方向）
+                sm->parseEAEB(pd->edt, &t, &p);
+                sm->setWattHourPlus(p);
+                sm->setTimePlus(t);
+                sm->_dataStore->setWattHourPlus(p, t);
+                break;
+            case 0xeb: // 積算電力量（逆方向）
+                sm->parseEAEB(pd->edt, &t, &p);
+                sm->setWattHourMinus(p);
+                sm->setTimeMinus(t);
+                sm->_dataStore->setWattHourMinus(p, t);
+                break;
+            }
+            pd = (ECHONET_DATA *)(pd->edt + s);
+        }
+        sm->_callback(sm);
+    };
 };
 
+SmartMeter smartmeter;
 #endif

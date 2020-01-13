@@ -64,6 +64,13 @@ private:
         0xbb, // EPC()
         0x00, // PDC
     };
+    static long temp(u_char edt, long def){
+        char v = (char)edt;
+        if (-127 <= v && v <= 125)
+            return (long)v;
+        else
+            return def;
+    }
     static void parse(ECHONET_FRAME *ef, void *obj)
     {
         Aircon *ac = (Aircon *)obj;
@@ -83,10 +90,10 @@ private:
                 ac->setPower(d);
                 break;
             case 0xbe: // 外気温
-                ac->setTempOut(pd->edt[0]);
+                ac->setTempOut(temp(pd->edt[0], ac->getTempOut()));
                 break;
             case 0xbb: // 室温
-                ac->setTempRoom(pd->edt[0]);
+                ac->setTempRoom(temp(pd->edt[0], ac->getTempRoom()));
                 break;
             }
             pd = (ECHONET_DATA *)(pd->edt + s);

@@ -26,9 +26,7 @@ Home Metrics By M5Stack
 
 - ハードウェア
   - M5Stack
-  - [BP35C0-T01](https://www.rohm.co.jp/products/wireless-communication/specified-low-power-radio-modules/bp35c0-product)
-    - Wi-SUN 無線モジュール（UART 接続）
-  - [WIZ850io](https://www.switch-science.com/catalog/3683/)
+- [WIZ850io](https://www.switch-science.com/catalog/3683/)
     - W5500 搭載 Ethernet モジュール（SPI 接続）
   - BME280 搭載モジュール
     - 回路図では、秋月製[AE-BME280](http://akizukidenshi.com/catalog/g/gK-09421/)を使用

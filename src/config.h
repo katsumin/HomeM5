@@ -16,6 +16,7 @@
 // LAN
 #define ECOCUTE_ADDRESS "0.0.0.0"
 #define AIRCON_ADDRESS "0.0.0.0"
+#define SMARTMETER_ADDRESS "0.0.0.0"
 
 // NTP
 #define NTP_SERVER "time.nist.gov"

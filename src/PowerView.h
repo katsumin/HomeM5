@@ -6,8 +6,8 @@
 #include "Rtc.h"
 #include "View.h"
 
-#define WATT_HOUR_FS (1.5f)
-#define FS_PIXEL (40)
+#define WATT_HOUR_FS (3.0f)
+#define FS_PIXEL (76)
 class PowerView : public View
 {
 private:
@@ -39,17 +39,17 @@ public:
     int32_t y = 16;
     M5.Lcd.fillRect(0, y, M5.Lcd.width(), M5.Lcd.height() - y * 2, BLACK);             // ヘッダ以外を消去
     M5.Lcd.drawRoundRect(0, y, M5.Lcd.width(), M5.Lcd.height() - y * 2 - 4, 5, WHITE); // 外枠
-    M5.Lcd.drawFastHLine(0, 90, M5.Lcd.width(), WHITE);                                // 区切り線
+    // M5.Lcd.drawFastHLine(0, 90, M5.Lcd.width(), WHITE);                                // 区切り線
     _currentIndex = -1;
 
     // 瞬時値
     M5.Lcd.setTextDatum(TL_DATUM);
     M5.Lcd.setFreeFont(FF5); // Select the font
     M5.Lcd.setTextColor(WHITE);
-    int x = 160 - 18 / 2 * 11;
-    M5.Lcd.drawString("SmartMeter:      W", x, 25);
-    M5.Lcd.drawString("Eco-cute  :      W", x, 45);
-    M5.Lcd.drawString("Air-con   :      W", x, 65);
+    int x = 120 - 12 / 2 * 11;
+    M5.Lcd.drawString("Cur.:      W", x, 25);
+    // M5.Lcd.drawString("Eco-cute  :      W", x, 45);
+    // M5.Lcd.drawString("Air-con   :      W", x, 65);
 
     // setEnable(true);
   };
@@ -62,16 +62,16 @@ public:
       M5.Lcd.setTextDatum(TL_DATUM);
       M5.Lcd.setFreeFont(FF5); // Select the font
       M5.Lcd.setTextColor(YELLOW);
-      int x = 160 + (-18 / 2 + 12) * 11;
+      int x = 120 + (-12 / 2 + 6) * 11;
       snprintf(buf, sizeof(buf), "%5ld", _store->getPower());
       M5.Lcd.fillRect(x, 25, 5 * 11, _fontHeight, BLACK);
       M5.Lcd.drawString(buf, x, 25);
-      snprintf(buf, sizeof(buf), "%5ld", _store->getEcoPower());
-      M5.Lcd.fillRect(x, 45, 5 * 11, _fontHeight, BLACK);
-      M5.Lcd.drawString(buf, x, 45);
-      snprintf(buf, sizeof(buf), "%5ld", _store->getAirPower());
-      M5.Lcd.fillRect(x, 65, 5 * 11, _fontHeight, BLACK);
-      M5.Lcd.drawString(buf, x, 65);
+    //   snprintf(buf, sizeof(buf), "%5ld", _store->getEcoPower());
+    //   M5.Lcd.fillRect(x, 45, 5 * 11, _fontHeight, BLACK);
+    //   M5.Lcd.drawString(buf, x, 45);
+    //   snprintf(buf, sizeof(buf), "%5ld", _store->getAirPower());
+    //   M5.Lcd.fillRect(x, 65, 5 * 11, _fontHeight, BLACK);
+    //   M5.Lcd.drawString(buf, x, 65);
       // 積算値
       M5.Lcd.setTextDatum(MC_DATUM);
       M5.Lcd.setFreeFont(FF9); // Select the font
@@ -85,7 +85,7 @@ public:
 
         // グラフ表示
         int x = 17;
-        int y = 155;
+        int y = 25 + FS_PIXEL + _font1Height * 2 + 3;
         int w = 5;
         int step_x = w + 1;
         M5.Lcd.fillRect(x, y - FS_PIXEL, step_x * WATT_HOUR_POINTS + 1, FS_PIXEL * 2 + 2, BLACK);
@@ -126,9 +126,9 @@ public:
         }
         // Y軸
         M5.Lcd.setTextColor(WHITE);
-        M5.Lcd.drawString(" 1.5kWh", x - 1, y - FS_PIXEL - _font1Height);
+        M5.Lcd.drawString(" 3.0kWh", x - 1, y - FS_PIXEL - _font1Height);
         M5.Lcd.drawString("0", x - w, y);
-        M5.Lcd.drawString("-1.5kWh", x - 1, y + FS_PIXEL + _font1Height);
+        M5.Lcd.drawString("-3.0kWh", x - 1, y + FS_PIXEL + _font1Height);
 
         // 最新値表示
         M5.Lcd.setTextColor(YELLOW);

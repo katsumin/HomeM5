@@ -5,7 +5,8 @@
 #include <WiFiMulti.h>
 #include <Ethernet.h>
 #include <Wire.h>
-#include <BME280_t.h> // import BME280 template library
+// #include <BME280_t.h> // import BME280 template library
+#include <Adafruit_BME280.h>
 #include "InfluxDb.h"
 #include "smartmeter.h"
 #include "config.h"
@@ -134,25 +135,33 @@ void nw_init()
     smartmeter.setDataStore(&dataStore);
 }
 
-BME280<> BMESensor; // instantiate sensor
+Adafruit_BME280 bme; // I2C
+// BME280<> BMESensor; // instantiate sensor
 void updateBme(boolean withInflux)
 {
     while (true)
     {
-        BMESensor.refresh(); // read current sensor data
-        float p = BMESensor.pressure;
+        // // BMESensor.refresh(); // read current sensor data
+        // float p = BMESensor.pressure;
+        float p = bme.readPressure();
         if (p >= 90000.0)
             break;
         Serial.println(p);
         delay(100);
     }
-    dataStore.setTemperature(BMESensor.temperature);
-    dataStore.setHumidity(BMESensor.humidity);
-    dataStore.setPressure(BMESensor.pressure / 100.0F);
+    // float temp = BMESensor.temperature;
+    // float hum = BMESensor.humidity;
+    // float press = BMESensor.pressure / 100.0F;
+    float temp = bme.readTemperature();
+    float hum = bme.readHumidity();
+    float press = bme.readPressure() / 100.0F;
+    dataStore.setTemperature(temp);
+    dataStore.setHumidity(hum);
+    dataStore.setPressure(press);
     if (withInflux)
     {
         char buf[64];
-        snprintf(buf, sizeof(buf), "room temp=%.1f,hum=%.1f,press=%.1f", BMESensor.temperature, BMESensor.humidity, BMESensor.pressure / 100.0F);
+        snprintf(buf, sizeof(buf), "room temp=%.1f,hum=%.1f,press=%.1f", temp, hum, press);
         debugView.output(buf);
         int res = influx.write(buf);
         debugView.output(res);
@@ -188,7 +197,13 @@ void setup()
     // Sensor
     Wire.begin(GPIO_NUM_21, GPIO_NUM_22); // initialize I2C that connects to sensor
 #ifndef TEST
-    BMESensor.begin(); // initalize bme280 sensor
+    // BMESensor.begin(); // initalize bme280 sensor
+    if (!bme.begin(0x76))
+    {
+        Serial.println(F("Could not find a valid BME280 sensor, check wiring!"));
+        while (1)
+            delay(10);
+    }
     updateBme(true);
 #endif
     // delay(1000);

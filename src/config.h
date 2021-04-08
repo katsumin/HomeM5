@@ -1,22 +1,12 @@
 #include <Arduino.h>
 
-// smartmeter
-#define PWD "pwd"
-#define BID "bid"
-
 // WiFi
-#define WIFI_SSID "ssid"
-#define WIFI_PASS "pass"
+#define WIFI_SSID "WIFI_SSID"
+#define WIFI_PASS "WIFI_PASS"
 
 // InfluxDB
-// #define INFLUX_SERVER "192.168.1.121"
-#define INFLUX_SERVER "influx"
-#define INFLUX_DB "smartmeter"
-
-// LAN
-#define ECOCUTE_ADDRESS "0.0.0.0"
-#define AIRCON_ADDRESS "0.0.0.0"
-#define SMARTMETER_ADDRESS "0.0.0.0"
+#define INFLUX_SERVER "INFLUX_SERVER"
+#define INFLUX_DB "INFLUX_DB"
 
 // NTP
 #define NTP_SERVER "time.nist.gov"

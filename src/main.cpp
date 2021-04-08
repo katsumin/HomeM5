@@ -1,106 +1,92 @@
-#include <queue>
+#include "View.h"
+#define _M5DISPLAY_H_
+class M5Display
+{
+};
 #include <M5Stack.h>
+// #include <queue>
 #include <time.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
-#include <Ethernet.h>
-#include <Wire.h>
-// #include <BME280_t.h> // import BME280 template library
-#include <Adafruit_BME280.h>
+#include <Ethernet3.h>
+#include <NTPClient.h>
 #include "InfluxDb.h"
-#include "smartmeter.h"
 #include "config.h"
-#include "debugView.h"
+// #include "debugView.h"
 #include "FunctionButton.h"
 #include "MainView.h"
 #include "HeadView.h"
-#include "PowerView.h"
-#include "Rtc.h"
-#include "EchonetUdp.h"
-#include "Ecocute.h"
-#include "Aircon.h"
-#include "log.h"
+// #include "PowerView.h"
 #include "DataStore.h"
-#include "View.h"
+#include "EthernetManager.h"
+
 #define SCK 18
 #define MISO 19
 #define MOSI 23
 #define CS 26
-// #define TEST
+#define TEST
 
 // instances
-FunctionButton btnB(&M5.BtnB);
-FunctionButton btnC(&M5.BtnC);
-DebugView debugView(0, 100, 320, SCROLL_SIZE * 10);
+// TFT_eSPI *lcd = &M5.Lcd;
+static TFT_eSPI lcd;
+// FunctionButton btnA(&M5.BtnA, &lcd, POS_A_X);
+FunctionButton btnB(&M5.BtnB, &lcd, POS_B_X);
+FunctionButton btnC(&M5.BtnC, &lcd, POS_C_X);
+// DebugView debugView(0, 100, 320, SCROLL_SIZE * 10);
 InfluxDb influx(INFLUX_SERVER, INFLUX_DB);
 // SmartMeter sm;
-NtpClient ntp;
-Rtc rtc;
-DataStore dataStore;
-MainView mainView(&dataStore);
-PowerView powerView(&dataStore, &rtc);
-ViewController viewController;
+// NtpClient ntp;
+// Rtc rtc;
+// PowerView *powerView;
+ViewController viewController(&btnC, &lcd);
+HeadView headView(&lcd);
+DataStore dataStore(&influx, &viewController);
+MainView mainView(&dataStore, &lcd);
 
-#define TIMEZONE 9 * 3600
+const long gmtOffset_sec = 9 * 3600; //9時間の時差を入れる
 
-boolean bEco = false;
-void ecocuteCallback(Ecocute *ec)
-{
-    // sd_log.out("Ecocute callback");
-    Serial.println("Ecocute callback");
-    bEco = true;
-}
-
-boolean bAir = false;
-void airconCallback(Aircon *ac)
-{
-    // sd_log.out("Aircon callback");
-    Serial.println("Aircon callback");
-    bAir = true;
-}
-boolean bSma = false;
-void smartmeterCallback(SmartMeter *sm)
-{
-    Serial.println("Smartmeter callback");
-    bSma = true;
-}
-
-void callbackNtp(void *arg)
-{
-    Serial.println("callbacked !");
-    btnB.enable("NTP");
-}
-
-WiFiMulti wm;
+EthernetManager *em;
+NTPClient *ntp;
+// WiFiMulti wm;
 void nw_init()
 {
     Serial.println();
+
     SPI.begin(SCK, MISO, MOSI, -1);
-    Ethernet.init(CS); // Ethernet/Ethernet2
+    // Ethernet.init(CS); // Ethernet/Ethernet2
     IPAddress addr;
     char buf[64];
     UDP *udpNtp = nullptr;
-    UDP *udpEchonet = nullptr;
-    if (Ethernet.linkStatus() == LinkON) // Ethernet
+    UDP *udpUni = nullptr;
+    UDP *udpMulti = nullptr;
+
+    headView.init();
+    Ethernet.setCsPin(CS);
+    // Ethernet.setRstPin(BCM24);
+    boolean isEther = false;
+    if (Ethernet.begin(mac))
     {
         // Ethernet
         Serial.println("Ethernet connected");
         Serial.println("IP address: ");
         Ethernet.begin(mac);
         addr = Ethernet.localIP();
-        influx.setEthernet(true);
-        echonetUdp.setEthernet(true);
+        isEther = true;
+        // echonetUdp.setEthernet(true);
         snprintf(buf, sizeof(buf), "%s(Ethernet)", addr.toString().c_str());
         headView.setNwType("Ethernet");
         udpNtp = new EthernetUDP();
-        udpEchonet = new EthernetUDP();
+        udpUni = new EthernetUDP();
+        udpMulti = new EthernetUDP();
     }
     else
     {
         // WiFi
         Serial.print("Connecting to WIFI");
-        wm.addAP(WIFI_SSID, WIFI_PASS);
-        while (wm.run() != WL_CONNECTED)
+        WiFi.begin(WIFI_SSID, WIFI_PASS);
+        // wm.addAP(WIFI_SSID, WIFI_PASS);
+        // while (WiFi.run() != WL_CONNECTED)
+        while (WiFi.status() != WL_CONNECTED)
         {
             Serial.print(".");
             delay(100);
@@ -108,184 +94,107 @@ void nw_init()
         Serial.println("WiFi connected");
         Serial.println("IP address: ");
         addr = WiFi.localIP();
-        influx.setEthernet(false);
-        echonetUdp.setEthernet(false);
+        // echonetUdp.setEthernet(false);
         snprintf(buf, sizeof(buf), "%s(WiFi)", addr.toString().c_str());
         headView.setNwType("WiFi");
         udpNtp = new WiFiUDP();
-        udpEchonet = new WiFiUDP();
+        udpUni = nullptr;
+        udpMulti = new WiFiUDP();
     }
-    Serial.println(buf);
+    influx.setEthernet(isEther);
     headView.setIpAddress(addr);
+    em = new EthernetManager(udpMulti, udpUni);
+    em->setDataStore(&dataStore);
 
-    // RTC
-    ntp.init(udpNtp, (char *)NTP_SERVER, random(10000, 19999));
-    ntp.setCallback(callbackNtp, nullptr);
-    rtc.init(&ntp);
-    // echonet
-    echonetUdp.init(udpEchonet);
-    // echonetUdp.getServer();
-    delay(1000);
-    // ecocute
-    ecocute.init(&echonetUdp, ECOCUTE_ADDRESS, ecocuteCallback);
-    // aircon
-    aircon.init(&echonetUdp, AIRCON_ADDRESS, airconCallback);
-    // smartmeter
-    smartmeter.init(&echonetUdp, SMARTMETER_ADDRESS, smartmeterCallback);
-    smartmeter.setDataStore(&dataStore);
+    // NTP
+    ntp = new NTPClient(*udpNtp, NTP_SERVER, gmtOffset_sec, 10 * 60 * 1000);
+    ntp->begin();
+    ntp->update();
+    headView.setNtp(ntp);
 }
 
-Adafruit_BME280 bme; // I2C
-// BME280<> BMESensor; // instantiate sensor
-void updateBme(boolean withInflux)
+#define INTERVAL (30)
+void static influxTask(void *arm)
 {
+    Serial.println("InfluxDB Task start.");
     while (true)
     {
-        // // BMESensor.refresh(); // read current sensor data
-        // float p = BMESensor.pressure;
-        float p = bme.readPressure();
-        if (p >= 90000.0)
-            break;
-        Serial.println(p);
-        delay(100);
+        delay(700); // 0.7s wait
+        unsigned long epoch = ntp->getEpochTime();
+        if (epoch % (INTERVAL * 2) == 0)
+        {
+            dataStore.updateInflux(epoch - gmtOffset_sec);
+        }
     }
-    // float temp = BMESensor.temperature;
-    // float hum = BMESensor.humidity;
-    // float press = BMESensor.pressure / 100.0F;
-    float temp = bme.readTemperature();
-    float hum = bme.readHumidity();
-    float press = bme.readPressure() / 100.0F;
-    dataStore.setTemperature(temp);
-    dataStore.setHumidity(hum);
-    dataStore.setPressure(press);
-    if (withInflux)
-    {
-        char buf[64];
-        snprintf(buf, sizeof(buf), "room temp=%.1f,hum=%.1f,press=%.1f", temp, hum, press);
-        debugView.output(buf);
-        int res = influx.write(buf);
-        debugView.output(res);
-    }
+    Serial.println("InfluxDB Task end.");
+    vTaskDelete(NULL);
 }
 
 #define VIEWKEY_MAIN ((const char *)"MAIN")
 #define VIEWKEY_POWER ((const char *)"POWER")
-// CONNECT_STATE preState;
 void setup()
 {
+    lcd.init();
     M5.begin();
 
-    // DataStore
-    dataStore.init();
-
     //  View
-    M5.Lcd.clear();
-    headView.init();
-    headView.setRtc(&rtc);
-    sd_log.setRtc(&rtc);
-    viewController.setView(VIEWKEY_MAIN, &mainView, VIEWKEY_POWER);
-    viewController.setView(VIEWKEY_POWER, &powerView, VIEWKEY_MAIN);
-    viewController.changeNext();
-
-    // // スマートメータ
-    btnC.enable(viewController.getNextKey());
+    viewController.setView(VIEWKEY_MAIN, &mainView);
+    // powerView = new PowerView(&dataStore, &lcd);
+    // viewController.setView(VIEWKEY_POWER, powerView);
+    // viewController.changeNext();
+    // btnC.enable(viewController.getNextKey());
 
     // LAN
     btnB.disable("NTP");
     nw_init();
+    ntp->update();
+    btnB.enable("NTP");
 
-    // Sensor
-    Wire.begin(GPIO_NUM_21, GPIO_NUM_22); // initialize I2C that connects to sensor
-#ifndef TEST
-    // BMESensor.begin(); // initalize bme280 sensor
-    if (!bme.begin(0x76))
-    {
-        Serial.println(F("Could not find a valid BME280 sensor, check wiring!"));
-        while (1)
-            delay(10);
-    }
-    updateBme(true);
-#endif
-    // delay(1000);
-    ecocute.request();
-    aircon.request();
-    smartmeter.request();
+    em->scan();
+
+    xTaskCreate(influxTask, "InfluxTask", 4096, NULL, 5, NULL);
 }
 
-time_t rtcTest = 0;
-float wattHourTest = 0.0;
-unsigned long preMeas = millis();
-unsigned long preView = preMeas;
-#define INTERVAL (30 * 1000)
-#define VIEW_INTERVAL (1000)
+unsigned long preEpoch = 0;
+boolean db = false;
 void loop()
 {
-    long cur = millis();
-    long d = cur - preMeas;
-    if (d < 0)
-        d += ULONG_MAX;
-    if (d >= INTERVAL) // debug
+    em->update();
+
+    unsigned long epoch = ntp->getEpochTime();
+    if (preEpoch != epoch)
     {
-        preMeas = cur;
-
-        char buf[64];
-        snprintf(buf, sizeof(buf), "%ld -> %ld, memory(%d)", preMeas, d, xPortGetFreeHeapSize());
-        debugView.output(buf);
-
-        // BME280
-#ifndef TEST
-        updateBme(true);
-#endif
-
-        // smartmeter
-        smartmeter.request();
-        // ecocute
-        ecocute.request();
-        // aircon
-        aircon.request();
-    }
-
-    char buf[64];
-    if (bEco)
-    {
-        dataStore.setEcoPower(ecocute.getPower());
-        dataStore.setEcoTank(ecocute.getTank());
-        snprintf(buf, sizeof(buf), "ecocute power=%ld,powerSum=%ld,tank=%ld", ecocute.getPower(), ecocute.getTotalPower(), ecocute.getTank());
-        debugView.output(buf);
-        int res = influx.write(buf);
-        debugView.output(res);
-        bEco = false;
-    }
-    if (bAir)
-    {
-        dataStore.setAirPower(aircon.getPower());
-        dataStore.setAirTempOut(aircon.getTempOut());
-        dataStore.setAirTempRoom(aircon.getTempRoom());
-        snprintf(buf, sizeof(buf), "aircon power=%ld,tempOut=%ld,tempRoom=%ld", aircon.getPower(), aircon.getTempOut(), aircon.getTempRoom());
-        debugView.output(buf);
-        int res = influx.write(buf);
-        debugView.output(res);
-        bAir = false;
-    }
-
-    d = cur - preView;
-    if (d < 0)
-        d += ULONG_MAX;
-    if (d >= VIEW_INTERVAL)
-    {
-        preView = cur;
+        // Serial.printf("epoch: %ld", epoch);
+        // Serial.println();
+        preEpoch = epoch;
+        if (epoch % INTERVAL == 0)
+        {
+            em->request();
+        }
         headView.update();
         viewController.update();
     }
+
     if (btnB.isEnable() && btnB.getButton()->wasPressed())
     {
-        rtc.adjust();
         btnB.disable("NTP");
+        // Serial.println("NTP");
+        ntp->update();
+        btnB.enable("NTP");
     }
     else if (btnC.isEnable() && btnC.getButton()->wasPressed())
     {
         viewController.changeNext();
-        btnC.enable(viewController.getNextKey());
+        // btnC.enable(viewController.getNextKey());
+        // }
+        // else if (btnA.isEnable() && btnA.getButton()->wasReleased())
+        // {
+        //     Serial.println("DB on/off");
+        //     db = !db;
+        //     if (db)
+        //         btnA.enable("DB on");
+        //     else
+        //         btnA.enable("DB off");
     }
     delay(1);
     M5.update();

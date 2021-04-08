@@ -2,7 +2,7 @@
 #define _INFLUX_DB_H_
 #include <Client.h>
 #include <ArduinoHttpClient.h>
-#include <Ethernet.h>
+#include <Ethernet3.h>
 #include <WiFiClient.h>
 
 class InfluxDb

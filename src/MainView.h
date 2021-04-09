@@ -4,6 +4,7 @@
 // #include "Free_Fonts.h"
 #include "DataStore.h"
 #include "View.h"
+#include <map>
 
 class MainView : public View
 {
@@ -79,7 +80,7 @@ public:
         const char *s = "自宅状況モニタ";
         int len = getLcd()->textWidth(s);
         int32_t x = (getLcd()->width() - len) / 2;
-        y = getLcd()->height() / 2;
+        y = getLcd()->height() / 3;
         getLcd()->drawString(s, x, y);
     }
     virtual void update()
@@ -127,6 +128,24 @@ public:
             // y += _fontHeight;
             // snprintf(buf, sizeof(buf), "%9.1f", _store->getAirTempOut());
             // getLcd()->drawString(buf, x, y);
+            char buf[64];
+            int count = 0;
+            std::map<String, Node *> *nodes = _store->getNodes();
+            for (auto itr = nodes->begin(); itr != nodes->end(); ++itr)
+            {
+                std::map<uint32_t, Device *> *devices = itr->second->getDevices();
+                count += devices->size();
+            }
+            getLcd()->setTextColor(TFT_WHITE);
+            getLcd()->setFont(&fonts::lgfxJapanGothic_24);
+            getLcd()->setTextDatum(MC_DATUM);
+            int16_t fh = getLcd()->fontHeight();
+            snprintf(buf, sizeof(buf), "デバイス数: %2d", count);
+            int w = getLcd()->textWidth(buf);
+            int x = getLcd()->width() / 2;
+            int y = getLcd()->height() * 2 / 3;
+            getLcd()->fillRect(x - w / 2, y - fh / 2, w, fh, TFT_BLACK);
+            getLcd()->drawString(buf, x, y);
         }
     };
 };

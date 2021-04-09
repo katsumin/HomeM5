@@ -309,9 +309,9 @@ private:
     char _buf[256];
     float _k = 0.1;
     int32_t _power = 0x7fffffff;
-    float _wattHourPlus = 0;
+    float _wattHourPlus = -1.0;
     time_t _timePlus = 0;
-    float _wattHourMinus = 0;
+    float _wattHourMinus = -1.0;
     time_t _timeMinus = 0;
     char *_statements[4];
     boolean _updated = false;

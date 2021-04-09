@@ -88,7 +88,7 @@ void Node::parse(const byte *props, const byte *seoj)
                             {
                                 Serial.printf(" ->view created. :%s", dv->getName());
                                 vc->setView(dv->getName(), dv);
-                                vc->changeNext();
+                                // vc->changeNext();
                             }
                         }
                     }

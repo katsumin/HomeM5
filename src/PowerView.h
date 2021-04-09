@@ -10,7 +10,7 @@ class WattHour
 {
 private:
     time_t _time = 0;
-    float _value;
+    float _value = 0.0;
     float _values[WATT_HOUR_POINTS]; // 48コマ分
 
 public:
@@ -35,6 +35,8 @@ public:
     void updateValues(float v, time_t t)
     {
         float preValue = getValue();
+        // Serial.printf("preValue: %f", preValue);
+        // Serial.println();
         time_t preTime = getTime();
         if (preTime == t)
             return;
@@ -131,8 +133,12 @@ public:
         //         return;
         // }
         SmartMeter *_sm = (SmartMeter *)getDevice();
-        _plus.updateValues(_sm->getWattHourPlus(), _sm->getTimePlus());
-        _minus.updateValues(_sm->getWattHourMinus(), _sm->getTimeMinus());
+        float wattHourP = _sm->getWattHourPlus();
+        float wattHourM = _sm->getWattHourMinus();
+        if (wattHourP < 0 || wattHourM < 0)
+            return;
+        _plus.updateValues(wattHourP, _sm->getTimePlus());
+        _minus.updateValues(wattHourM, _sm->getTimeMinus());
         if (isEnable())
         {
             char buf[32];
@@ -186,6 +192,8 @@ public:
                         getLcd()->drawFastVLine(x + i * step_x + w, y - FS_PIXEL + 1, FS_PIXEL * 2 - 1, TFT_YELLOW);
                     // float f = _store->getWattHourPlusAtIndex(in);
                     float f = _plus.getValueAtIndex(in);
+                    // Serial.printf("plus %f at %d", f, i);
+                    // Serial.println();
                     int dh = f / WATT_HOUR_FS * FS_PIXEL;
                     dh = (dh > FS_PIXEL - 1) ? FS_PIXEL - 1 : dh;
                     if (f >= 0)
@@ -194,6 +202,8 @@ public:
                         getLcd()->drawRect(x + i * step_x, y - FS_PIXEL, w, FS_PIXEL, TFT_LIGHTGREY);
                     // f = _store->getWattHourMinusAtIndex(in);
                     f = _minus.getValueAtIndex(in);
+                    // Serial.printf("minus %f at %d", f, i);
+                    // Serial.println();
                     dh = f / WATT_HOUR_FS * FS_PIXEL;
                     dh = (dh > FS_PIXEL - 1) ? FS_PIXEL - 1 : dh;
                     if (f >= 0)

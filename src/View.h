@@ -39,6 +39,7 @@ class ViewController
 {
 private:
     String _curKey;
+    String _lastKey;
     std::map<String, View *> _views;
     std::map<String, String> _keys;
     FunctionButton *_button;
@@ -48,6 +49,7 @@ public:
     ViewController(FunctionButton *btn, TFT_eSPI *lcd)
     {
         _curKey = "";
+        _lastKey = "";
         _button = btn;
         _lcd = lcd;
     };
@@ -65,17 +67,28 @@ public:
     {
         String newKey = String(key);
         _views[newKey] = view;
-        if (_keys.count(_curKey) == 0)
+        if (_lastKey == "")
         {
             _keys[newKey] = newKey;
+            _curKey = newKey;
+            changeNext();
         }
         else
         {
-            String oldKey = _keys[_curKey];
-            _keys[_curKey] = newKey;
-            _keys[newKey] = oldKey;
+            String oldNextKey = _keys[_lastKey];
+            _keys[_lastKey] = newKey;
+            _keys[newKey] = oldNextKey;
+            _button->enable(getNextKey());
         }
-        setCurrentKey(newKey);
+        // Serial.println();
+        // Serial.println(_lastKey);
+        // for (auto itr = _keys.begin(); itr != _keys.end(); itr++)
+        // {
+        //     Serial.printf("[%s]:%s ", itr->first.c_str(), itr->second.c_str());
+        // }
+        // Serial.println();
+        _lastKey = newKey;
+        // Serial.println(_lastKey);
     };
     void changeNext()
     {

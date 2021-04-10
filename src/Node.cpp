@@ -10,6 +10,7 @@ Node::Node(IPAddress addr, DataStore *ds)
 
 void Node::deviceRequest(Device *device)
 {
+    // Serial.println(device->getClassType(), HEX);
     byte *data = device->request();
     int len = data[0];
     _echo->send(_addr, &data[1], len);
@@ -23,13 +24,15 @@ void Node::deviceRequest(Device *device)
 
 void Node::request()
 {
+    // Serial.println(this->getId());
     for (auto itr = _devices.begin(); itr != _devices.end(); itr++)
     {
         deviceRequest(itr->second);
     }
 }
-void Node::updateInflux(unsigned long t)
+std::string Node::updateInflux(unsigned long t)
 {
+    std::string st = "";
     for (auto itr = _devices.begin(); itr != _devices.end(); ++itr)
     {
         uint32_t key = itr->first;
@@ -45,10 +48,13 @@ void Node::updateInflux(unsigned long t)
                 Serial.printf("influx: %s", statement);
                 Serial.println();
 #endif
-                _dataStore->getInfluxdb()->write(statement);
+                st.append(statement);
+                st += '\n';
+                // _dataStore->getInfluxdb()->write(statement);
             }
         }
     }
+    return st;
 }
 
 void Node::parse(const byte *props, const byte *seoj)
@@ -82,6 +88,7 @@ void Node::parse(const byte *props, const byte *seoj)
                         {
                             Serial.print(" ->created.");
                             _devices[key] = d;
+                            d->request();
                             ViewController *vc = _dataStore->getViewController();
                             DeviceView *dv = DeviceView::createView(d, vc->getLcd());
                             if (dv != nullptr)

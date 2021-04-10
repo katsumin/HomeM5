@@ -47,7 +47,7 @@ public:
     inline void setEchonet(EL *el) { _echo = el; }
     void deviceRequest(Device *device);
     void request();
-    void updateInflux(unsigned long t);
+    std::string updateInflux(unsigned long t);
     void parse(const byte *props, const byte *seoj);
 };
 

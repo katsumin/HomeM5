@@ -39,10 +39,15 @@ private:
     // float _tempOut = 0;
 
 public:
-    DataStore(InfluxDb *db, ViewController *vc)
+    DataStore(ViewController *vc)
     {
-        setInfluxdb(db);
         setViewController(vc);
+    }
+    void init(Client *pC, const char *influx_server, const char *influx_db)
+    {
+        InfluxDb *db = new InfluxDb(influx_server, influx_db);
+        db->init(pC);
+        setInfluxdb(db);
     }
     inline void setEchonet(EL *el) { _echo = el; }
     inline InfluxDb *getInfluxdb() { return _influxdb; }
@@ -90,13 +95,20 @@ public:
         for (auto itr = _nodes.begin(); itr != _nodes.end(); ++itr)
         {
             itr->second->request();
-            delay(10);
+            delay(100);
         }
     }
     void updateInflux(unsigned long t)
     {
+        std::string st = "";
         for (auto itr = _nodes.begin(); itr != _nodes.end(); ++itr)
-            itr->second->updateInflux(t);
+        {
+            std::string statement = itr->second->updateInflux(t);
+            if (statement.length() == 0)
+                continue;
+            st.append(statement);
+        }
+        getInfluxdb()->write(st.c_str());
     }
 
     // inline void setTemperature(float temp)

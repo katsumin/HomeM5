@@ -24,6 +24,7 @@ class M5Display
 #define MISO 19
 #define MOSI 23
 #define CS 26
+#define RST 5
 #define TEST
 
 // instances
@@ -33,14 +34,14 @@ static TFT_eSPI lcd;
 FunctionButton btnB(&M5.BtnB, &lcd, POS_B_X);
 FunctionButton btnC(&M5.BtnC, &lcd, POS_C_X);
 // DebugView debugView(0, 100, 320, SCROLL_SIZE * 10);
-InfluxDb influx(INFLUX_SERVER, INFLUX_DB);
+// InfluxDb influx(INFLUX_SERVER, INFLUX_DB);
 // SmartMeter sm;
 // NtpClient ntp;
 // Rtc rtc;
 // PowerView *powerView;
 ViewController viewController(&btnC, &lcd);
 HeadView headView(&lcd);
-DataStore dataStore(&influx, &viewController);
+DataStore dataStore(&viewController);
 MainView mainView(&dataStore, &lcd);
 
 const long gmtOffset_sec = 9 * 3600; //9時間の時差を入れる
@@ -55,29 +56,40 @@ void nw_init()
     SPI.begin(SCK, MISO, MOSI, -1);
     // Ethernet.init(CS); // Ethernet/Ethernet2
     IPAddress addr;
-    char buf[64];
+    // char buf[64];
     UDP *udpNtp = nullptr;
     UDP *udpUni = nullptr;
     UDP *udpMulti = nullptr;
 
     headView.init();
-    Ethernet.setCsPin(CS);
-    // Ethernet.setRstPin(BCM24);
+    Ethernet.setCsPin(CS);   // Ethernet3
+    Ethernet.setRstPin(RST); // Ethernet3
     boolean isEther = false;
-    if (Ethernet.begin(mac))
+    Serial.print("Connecting to Ethernet");
+    // int ret = Ethernet.begin(mac);
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     Serial.print(".");
+    //     ret = Ethernet.begin(mac);
+    //     if (ret != 0)
+    //         break;
+    //     delay(100);
+    // }
+    if (Ethernet.begin(mac) != 0)
     {
         // Ethernet
         Serial.println("Ethernet connected");
         Serial.println("IP address: ");
-        Ethernet.begin(mac);
+        // Ethernet.begin(mac);
         addr = Ethernet.localIP();
         isEther = true;
         // echonetUdp.setEthernet(true);
-        snprintf(buf, sizeof(buf), "%s(Ethernet)", addr.toString().c_str());
+        // snprintf(buf, sizeof(buf), "%s(Ethernet)", addr.toString().c_str());
         headView.setNwType("Ethernet");
         udpNtp = new EthernetUDP();
         udpUni = new EthernetUDP();
         udpMulti = new EthernetUDP();
+        dataStore.init(new EthernetClient(), INFLUX_SERVER, INFLUX_DB);
     }
     else
     {
@@ -95,13 +107,14 @@ void nw_init()
         Serial.println("IP address: ");
         addr = WiFi.localIP();
         // echonetUdp.setEthernet(false);
-        snprintf(buf, sizeof(buf), "%s(WiFi)", addr.toString().c_str());
+        // snprintf(buf, sizeof(buf), "%s(WiFi)", addr.toString().c_str());
         headView.setNwType("WiFi");
         udpNtp = new WiFiUDP();
         udpUni = nullptr;
         udpMulti = new WiFiUDP();
+        dataStore.init(new WiFiClient(), INFLUX_SERVER, INFLUX_DB);
     }
-    influx.setEthernet(isEther);
+    // influx.setEthernet(isEther);
     headView.setIpAddress(addr);
     em = new EthernetManager(udpMulti, udpUni);
     em->setDataStore(&dataStore);
@@ -113,22 +126,61 @@ void nw_init()
     headView.setNtp(ntp);
 }
 
-#define INTERVAL (30)
+#define INTERVAL (60)
+#define INFLUX (0)
+#define SCAN (30)
+xSemaphoreHandle _mutex = xSemaphoreCreateMutex();
 void static influxTask(void *arm)
 {
     Serial.println("InfluxDB Task start.");
+    unsigned long pre = millis();
     while (true)
     {
         delay(700); // 0.7s wait
         unsigned long epoch = ntp->getEpochTime();
-        if (epoch % (INTERVAL * 2) == 0)
+        if (epoch % INTERVAL == INFLUX)
         {
+            pre = millis();
+            xSemaphoreTake(_mutex, portMAX_DELAY);
             dataStore.updateInflux(epoch - gmtOffset_sec);
+            xSemaphoreGive(_mutex);
+            unsigned long duration = millis() - pre;
+            Serial.printf("influx duration: %d", duration);
+            Serial.println();
+        }
+        else if (epoch % INTERVAL == SCAN)
+        {
+            pre = millis();
+            xSemaphoreTake(_mutex, portMAX_DELAY);
+            em->request();
+            xSemaphoreGive(_mutex);
+            unsigned long duration = millis() - pre;
+            Serial.printf("scan duration: %d", duration);
+            Serial.println();
         }
     }
     Serial.println("InfluxDB Task end.");
     vTaskDelete(NULL);
 }
+// void static scanTask(void *arm)
+// {
+//     Serial.println("Scan Task start.");
+//     while (true)
+//     {
+//         delay(700); // 0.7s wait
+//         unsigned long epoch = ntp->getEpochTime();
+//         if (epoch % INTERVAL == SCAN)
+//         {
+//             unsigned long pre = millis();
+//             em->request();
+//             unsigned long duration = millis() - pre;
+//             Serial.printf("scan duration: %d", duration);
+//             Serial.println();
+//         }
+//     }
+//     Serial.println("Scan Task end.");
+//     vTaskDelete(NULL);
+// }
 
 #define VIEWKEY_MAIN ((const char *)"MAIN")
 #define VIEWKEY_POWER ((const char *)"POWER")
@@ -152,6 +204,7 @@ void setup()
 
     em->scan();
 
+    // xTaskCreate(scanTask, "ScanTask", 4096, NULL, 5, NULL);
     xTaskCreate(influxTask, "InfluxTask", 4096, NULL, 5, NULL);
 }
 
@@ -167,10 +220,10 @@ void loop()
         // Serial.printf("epoch: %ld", epoch);
         // Serial.println();
         preEpoch = epoch;
-        if (epoch % INTERVAL == 0)
-        {
-            em->request();
-        }
+        // if (epoch % INTERVAL == 0)
+        // {
+        //     em->request();
+        // }
         headView.update();
         viewController.update();
     }

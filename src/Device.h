@@ -290,6 +290,27 @@ public:
 };
 
 // 低圧スマート電力量メータ（0x0288）
+#define WATT_HOUR_POINTS (48)
+#define WATT_HOUR_LAST_POINT (WATT_HOUR_POINTS - 1)
+class WattHour
+{
+private:
+    time_t _time = 0;
+    float _value = 0.0;
+    float _values[WATT_HOUR_POINTS]; // 48コマ分
+
+public:
+    static int time2Index(time_t epoch);
+    inline static int nextIndex(int index) { return (index + 1) % WATT_HOUR_POINTS; };
+    inline static int prevIndex(int index) { return (index + WATT_HOUR_LAST_POINT) % WATT_HOUR_POINTS; };
+    inline void setTime(time_t t) { _time = t; };
+    inline time_t getTime() { return _time; };
+    inline void setValue(float v) { _value = v; };
+    inline float getValue() { return _value; };
+    void init();
+    void updateValues(float v, time_t t);
+    inline float getValueAtIndex(int index) { return _values[index]; };
+};
 class SmartMeter : public Device
 {
 private:
@@ -315,6 +336,8 @@ private:
     time_t _timeMinus = 0;
     char *_statements[4];
     boolean _updated = false;
+    WattHour _plus;
+    WattHour _minus;
 
 private:
     void parseEAEB(u_char *edt, time_t *t, float *p);
@@ -353,6 +376,8 @@ public:
     inline float getWattHourMinus() { return _wattHourMinus; }
     inline time_t getTimePlus() { return _timePlus; }
     inline time_t getTimeMinus() { return _timeMinus; }
+    inline WattHour getWattHourObjPlus() { return _plus; }
+    inline WattHour getWattHourObjMinus() { return _minus; }
     virtual char **getInfluxStatement(String key, unsigned long t);
     // {
     //     if (_power > 2147483645)

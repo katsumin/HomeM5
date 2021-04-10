@@ -4,63 +4,6 @@
 #include "DeviceView.h"
 #include "Device.h"
 
-#define WATT_HOUR_POINTS (48)
-#define WATT_HOUR_LAST_POINT (WATT_HOUR_POINTS - 1)
-class WattHour
-{
-private:
-    time_t _time = 0;
-    float _value = 0.0;
-    float _values[WATT_HOUR_POINTS]; // 48コマ分
-
-public:
-    static int time2Index(time_t epoch)
-    {
-        long t = epoch % (60 * 60 * 24);
-        t /= (30 * 60);
-        return (int)t;
-    };
-    inline static int nextIndex(int index) { return (index + 1) % WATT_HOUR_POINTS; };
-    inline static int prevIndex(int index) { return (index + WATT_HOUR_LAST_POINT) % WATT_HOUR_POINTS; };
-
-    inline void setTime(time_t t) { _time = t; };
-    inline time_t getTime() { return _time; };
-    inline void setValue(float v) { _value = v; };
-    inline float getValue() { return _value; };
-    void init()
-    {
-        for (int i = 0; i < WATT_HOUR_POINTS; i++)
-            _values[i] = -1;
-    };
-    void updateValues(float v, time_t t)
-    {
-        float preValue = getValue();
-        // Serial.printf("preValue: %f", preValue);
-        // Serial.println();
-        time_t preTime = getTime();
-        if (preTime == t)
-            return;
-        if (preValue > 0)
-        {
-            // 測定間隔が空いたコマを無効値で埋める
-            int index = time2Index(preTime);
-            int diff = time2Index(t - preTime) - 1;
-            diff = (diff > WATT_HOUR_LAST_POINT) ? WATT_HOUR_LAST_POINT : diff;
-            for (int i = 0; i < diff; i++)
-            {
-                index %= WATT_HOUR_POINTS;
-                _values[index++] = -1;
-            }
-        }
-        // 最新値で更新
-        int curIndex = prevIndex(time2Index(t));
-        setTime(t);
-        _values[curIndex] = v - preValue;
-        setValue(v);
-    };
-    inline float getValueAtIndex(int index) { return _values[index]; };
-};
-
 #define WATT_HOUR_FS (3.0f)
 #define FS_PIXEL (76)
 class PowerView : public DeviceView
@@ -71,14 +14,10 @@ private:
     // font1高
     int16_t _font1Height;
     int _currentIndex;
-    WattHour _plus;
-    WattHour _minus;
 
 public:
     PowerView(SmartMeter *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
     {
-        _plus.init();
-        _minus.init();
         setName("POWER");
     }
     ~PowerView(){};
@@ -133,12 +72,6 @@ public:
         //         return;
         // }
         SmartMeter *_sm = (SmartMeter *)getDevice();
-        float wattHourP = _sm->getWattHourPlus();
-        float wattHourM = _sm->getWattHourMinus();
-        if (wattHourP < 0 || wattHourM < 0)
-            return;
-        _plus.updateValues(wattHourP, _sm->getTimePlus());
-        _minus.updateValues(wattHourM, _sm->getTimeMinus());
         if (isEnable())
         {
             char buf[32];
@@ -168,7 +101,7 @@ public:
             // getLcd()->setTextFont(1);
             getLcd()->setTextSize(1);
             // time_t epoch = _store->getWattHourPlusTime();
-            time_t epoch = _plus.getTime();
+            time_t epoch = _sm->getWattHourObjPlus().getTime();
             int index = WattHour::time2Index(epoch);
             if (_currentIndex != index)
             {
@@ -191,7 +124,7 @@ public:
                     if (in == WATT_HOUR_LAST_POINT)
                         getLcd()->drawFastVLine(x + i * step_x + w, y - FS_PIXEL + 1, FS_PIXEL * 2 - 1, TFT_YELLOW);
                     // float f = _store->getWattHourPlusAtIndex(in);
-                    float f = _plus.getValueAtIndex(in);
+                    float f = _sm->getWattHourObjPlus().getValueAtIndex(in);
                     // Serial.printf("plus %f at %d", f, i);
                     // Serial.println();
                     int dh = f / WATT_HOUR_FS * FS_PIXEL;
@@ -201,7 +134,7 @@ public:
                     else
                         getLcd()->drawRect(x + i * step_x, y - FS_PIXEL, w, FS_PIXEL, TFT_LIGHTGREY);
                     // f = _store->getWattHourMinusAtIndex(in);
-                    f = _minus.getValueAtIndex(in);
+                    f = _sm->getWattHourObjMinus().getValueAtIndex(in);
                     // Serial.printf("minus %f at %d", f, i);
                     // Serial.println();
                     dh = f / WATT_HOUR_FS * FS_PIXEL;
@@ -232,7 +165,7 @@ public:
                 getLcd()->setTextDatum(TL_DATUM);
                 int prevIndex = WattHour::prevIndex(index);
                 // float f = _store->getWattHourPlusAtIndex(prevIndex);
-                float f = _plus.getValueAtIndex(prevIndex);
+                float f = _sm->getWattHourObjPlus().getValueAtIndex(prevIndex);
                 if (0.0 <= f && f <= 100000.0)
                 {
                     snprintf(buf, sizeof(buf), "plus : %8.1fkWh", f);
@@ -241,7 +174,7 @@ public:
                     getLcd()->drawString(buf, 319 - w, y - FS_PIXEL - _font1Height * 2 - 3);
                 }
                 // f = _store->getWattHourMinusAtIndex(prevIndex);
-                f = _minus.getValueAtIndex(prevIndex);
+                f = _sm->getWattHourObjMinus().getValueAtIndex(prevIndex);
                 if (0.0 <= f && f <= 100000.0)
                 {
                     snprintf(buf, sizeof(buf), "minus: %8.1fkWh", f * (-1.0f));

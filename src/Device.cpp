@@ -227,13 +227,50 @@ void ElectricWaterHeater::parse(const byte *props)
 }
 
 // SmartMeter
+int WattHour::time2Index(time_t epoch)
+{
+    long t = epoch % (60 * 60 * 24);
+    t /= (30 * 60);
+    return (int)t;
+};
+void WattHour::init()
+{
+    for (int i = 0; i < WATT_HOUR_POINTS; i++)
+        _values[i] = -1;
+};
+void WattHour::updateValues(float v, time_t t)
+{
+    float preValue = getValue();
+    // Serial.printf("preValue: %f", preValue);
+    // Serial.println();
+    time_t preTime = getTime();
+    if (preTime == t)
+        return;
+    if (preValue > 0)
+    {
+        // 測定間隔が空いたコマを無効値で埋める
+        int index = time2Index(preTime);
+        int diff = time2Index(t - preTime) - 1;
+        diff = (diff > WATT_HOUR_LAST_POINT) ? WATT_HOUR_LAST_POINT : diff;
+        for (int i = 0; i < diff; i++)
+        {
+            index %= WATT_HOUR_POINTS;
+            _values[index++] = -1;
+        }
+    }
+    // 最新値で更新
+    int curIndex = prevIndex(time2Index(t));
+    setTime(t);
+    _values[curIndex] = v - preValue;
+    setValue(v);
+};
 SmartMeter::SmartMeter(byte eoj0, byte eoj1, byte eoj2, Node *node) : Device(eoj0, eoj1, eoj2, node)
 {
     setEoj(&_cmd_buf[8], eoj0, eoj1, eoj2);
+    _plus.init();
+    _minus.init();
     _statements[0] = (char *)malloc(BUF_SIZE); // power
-    _statements[1] = (char *)malloc(BUF_SIZE); // _wattHourPlus
-    _statements[2] = (char *)malloc(BUF_SIZE); // _wattHourMinus
-    _statements[3] = nullptr;                  // terminate
+    _statements[1] = nullptr;                  // terminate
 }
 
 char **SmartMeter::getInfluxStatement(String key, unsigned long t)
@@ -243,15 +280,16 @@ char **SmartMeter::getInfluxStatement(String key, unsigned long t)
     if (_updated)
     {
         _updated = false;
-        snprintf(_statements[0], BUF_SIZE, "power,target=%s,type=smartmeter value=%d %d000000000", key.c_str(), _power, t);
-        snprintf(_statements[1], BUF_SIZE, "watt_hour,target=%s,type=smartmeter_plus value=%.1f %d000000000", key.c_str(), _wattHourPlus, _timePlus - 9 * 3600);
-        snprintf(_statements[2], BUF_SIZE, "watt_hour,target=%s,type=smartmeter_minus value=%.1f %d000000000", key.c_str(), _wattHourMinus, _timeMinus - 9 * 3600);
+        snprintf(_statements[0], BUF_SIZE, "power,target=%s,type=smartmeter value=%d %d000000000\n"
+                                           "watt_hour,target=%s,type=smartmeter_plus value=%.1f %d000000000\n"
+                                           "watt_hour,target=%s,type=smartmeter_minus value=%.1f %d000000000",
+                 key.c_str(), _power, t, key.c_str(), _wattHourPlus, _timePlus - 9 * 3600, key.c_str(), _wattHourMinus, _timeMinus - 9 * 3600);
         return _statements;
     }
     else
     {
-        snprintf(_statements[2], BUF_SIZE, "power,target=%s,type=smartmeter value=%d %d000000000", key.c_str(), _power, t);
-        return &_statements[2];
+        snprintf(_statements[0], BUF_SIZE, "power,target=%s,type=smartmeter value=%d %d000000000", key.c_str(), _power, t);
+        return _statements;
     }
 }
 
@@ -333,12 +371,14 @@ void SmartMeter::parse(const byte *props)
         if (ed->pdc == 11)
         {
             parseEAEB(ed->edt, &_timePlus, &_wattHourPlus);
+            _plus.updateValues(_wattHourPlus, _timePlus);
         }
         break;
     case 0xeb:
         if (ed->pdc == 11)
         {
             parseEAEB(ed->edt, &_timeMinus, &_wattHourMinus);
+            _minus.updateValues(_wattHourMinus, _timeMinus);
         }
         break;
     default:

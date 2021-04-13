@@ -1,7 +1,5 @@
 #ifndef _VIEW_H_
 #define _VIEW_H_
-// #include "Free_Fonts.h"
-// #include <M5Stack.h>
 #include <map>
 #define LGFX_M5STACK
 #include <LGFX_TFT_eSPI.hpp>
@@ -80,15 +78,7 @@ public:
             _keys[newKey] = oldNextKey;
             _button->enable(getNextKey());
         }
-        // Serial.println();
-        // Serial.println(_lastKey);
-        // for (auto itr = _keys.begin(); itr != _keys.end(); itr++)
-        // {
-        //     Serial.printf("[%s]:%s ", itr->first.c_str(), itr->second.c_str());
-        // }
-        // Serial.println();
         _lastKey = newKey;
-        // Serial.println(_lastKey);
     };
     void changeNext()
     {

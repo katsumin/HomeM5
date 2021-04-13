@@ -19,8 +19,6 @@ void FunctionButton::_set(const char *label, int color)
     getLcd()->setTextColor(color);
     int32_t x = x_pos + WIDTH / 2 - getLcd()->textWidth(label) / 2;
     int32_t y = y_pos + 3;
-    // Serial.printf("x,y :%d,%d", x, y);
-    // Serial.println();
     getLcd()->drawString(label, x, y);
     getLcd()->drawRoundRect(x_pos, y_pos - 1, WIDTH, TEXT_HEIGHT, 2, TFT_WHITE);
 }

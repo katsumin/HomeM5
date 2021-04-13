@@ -34,7 +34,6 @@ private:
         getLcd()->setTextFont(1);
         getLcd()->setTextSize(1);
         getLcd()->setTextColor(TFT_YELLOW);
-        // tm *t = _rtc->getTm();
         time_t epoch = _ntp->getEpochTime();
         tm *t = localtime(&epoch);
         snprintf(_buf, sizeof(_buf), "%04d/%02d/%02d %02d:%02d:%02d", t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
@@ -59,7 +58,6 @@ public:
         _nwType = String(type);
         _printNwInfo();
     };
-    //   inline void setRtc(Rtc *rtc) { _rtc = rtc; };
     inline void setNtp(NTPClient *ntp) { _ntp = ntp; };
     void init()
     {

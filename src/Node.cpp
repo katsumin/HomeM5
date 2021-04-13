@@ -10,7 +10,6 @@ Node::Node(IPAddress addr, DataStore *ds)
 
 void Node::deviceRequest(Device *device)
 {
-    // Serial.println(device->getClassType(), HEX);
     byte *data = device->request();
     int len = data[0];
     _echo->send(_addr, &data[1], len);
@@ -24,7 +23,6 @@ void Node::deviceRequest(Device *device)
 
 void Node::request()
 {
-    // Serial.println(this->getId());
     for (auto itr = _devices.begin(); itr != _devices.end(); itr++)
     {
         deviceRequest(itr->second);
@@ -50,7 +48,6 @@ std::string Node::updateInflux(unsigned long t)
 #endif
                 st.append(statement);
                 st += '\n';
-                // _dataStore->getInfluxdb()->write(statement);
             }
         }
     }
@@ -95,7 +92,6 @@ void Node::parse(const byte *props, const byte *seoj)
                             {
                                 Serial.printf(" ->view created. :%s", dv->getName());
                                 vc->setView(dv->getName(), dv);
-                                // vc->changeNext();
                             }
                         }
                     }

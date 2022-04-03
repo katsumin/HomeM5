@@ -24,14 +24,19 @@ int InfluxDb::write(const char *data)
 #ifdef DEBUG
     Serial.println(data);
 #endif
-    _http->post(_buf, "text/plain", data);
-    Serial.println("posted.");
-    res = _http->responseStatusCode();
-    Serial.printf("response: %d", res);
-    Serial.println();
-    String rbody = _http->responseBody();
-    Serial.printf("response body: %s", rbody.c_str());
-    Serial.println();
-    _http->stop();
+    xSemaphoreTake(_mutex, portMAX_DELAY);
+    res = _http->post(_buf, "text/plain", data);
+    xSemaphoreGive(_mutex);
+    if (res == HTTP_SUCCESS)
+    {
+        Serial.println("posted.");
+        res = _http->responseStatusCode();
+        Serial.printf("response: %d", res);
+        Serial.println();
+        String rbody = _http->responseBody();
+        Serial.printf("response body: %s", rbody.c_str());
+        Serial.println();
+        _http->stop();
+    }
     return res;
 }

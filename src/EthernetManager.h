@@ -9,6 +9,7 @@ class EL2 : public EL
 private:
     UDP *_uniUdp = nullptr;
     uint16_t _uniPort = EL_PORT;
+    xSemaphoreHandle _mutex;
 
 public:
     EL2(UDP &udp, byte eoj0, byte eoj1, byte eoj2) : EL(udp, eoj0, eoj1, eoj2)
@@ -30,6 +31,7 @@ public:
         _uniPort = EL_PORT + 1;
     }
 
+    inline void setMutex(xSemaphoreHandle mutex) { _mutex = mutex; }
     void begin(void)
     {
         Serial.println("EL2::begin");
@@ -95,7 +97,8 @@ public:
     // IP指定による送信
     void send(IPAddress toip, byte sBuffer[], int size)
     {
-        // Serial.println("EL2::send");
+        xSemaphoreTake(_mutex, portMAX_DELAY);
+        Serial.printf("EL2::send start to %s\n", toip.toString().c_str());
 #ifdef EL_DEBUG
         Serial.print("send packet: ");
         for (int i = 0; i < size; i += 1)
@@ -123,6 +126,8 @@ public:
         {
             Serial.println("UDP endPacket failed.");
         }
+        Serial.printf("EL2::send end to %s\n", toip.toString().c_str());
+        xSemaphoreGive(_mutex);
     }
 };
 
@@ -151,6 +156,11 @@ public:
         _dataStore = store;
         _dataStore->setEchonet(_echo);
     }
+    inline void setMutex(xSemaphoreHandle mutex)
+    {
+        ((EL2 *)_echo)->setMutex(mutex);
+        _dataStore->setMutex(mutex);
+    }
     void processingProperty(const byte *props, IPAddress addr, const byte *seoj)
     {
         const byte epc = props[EL_EPC - EL_EPC];
@@ -168,6 +178,7 @@ public:
 #endif
         switch (epc)
         {
+        case 0xd5:
         case 0xd6:
             _echo->sendOPC1(addr, seoj, EL_GET, 0x83, {0x00});
             break;

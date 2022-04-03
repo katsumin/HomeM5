@@ -12,6 +12,7 @@ public:
     int write(const char *data);
     inline void setEthernet(boolean ether) { _isEthernet = ether; }
     void init(Client *pC);
+    inline void setMutex(xSemaphoreHandle mutex) { _mutex = mutex; }
 
 private:
     HttpClient *_http;
@@ -20,6 +21,7 @@ private:
     int _port;
     String _db;
     char *_buf;
+    xSemaphoreHandle _mutex;
 };
 
 #endif

@@ -31,6 +31,7 @@ public:
     inline void setInfluxdb(InfluxDb *db) { _influxdb = db; }
     inline ViewController *getViewController() { return _viewController; }
     inline void setViewController(ViewController *vc) { _viewController = vc; }
+    inline void setMutex(xSemaphoreHandle mutex) { _influxdb->setMutex(mutex); }
     inline std::map<String, Node *> *getNodes() { return &_nodes; }
     void processingProperty(const byte *props, IPAddress addr, const byte *seoj)
     {

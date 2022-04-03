@@ -33,7 +33,7 @@ HeadView headView(&lcd);
 DataStore dataStore(&viewController);
 MainView mainView(&dataStore, &lcd);
 
-const long gmtOffset_sec = 9 * 3600; //9時間の時差を入れる
+const long gmtOffset_sec = 9 * 3600; // 9時間の時差を入れる
 
 EthernetManager *em;
 NTPClient *ntp;
@@ -53,6 +53,7 @@ void nw_init()
     Ethernet.setRstPin(RST); // Ethernet3
     boolean isEther = false;
     Serial.print("Connecting to Ethernet");
+    Ethernet.hardreset();
     if (Ethernet.begin(mac) != 0)
     {
         // Ethernet
@@ -99,7 +100,6 @@ void nw_init()
 #define INTERVAL (60)
 #define INFLUX (0)
 #define SCAN (30)
-xSemaphoreHandle _mutex = xSemaphoreCreateMutex();
 void static influxTask(void *arm)
 {
     Serial.println("InfluxDB Task start.");
@@ -110,23 +110,25 @@ void static influxTask(void *arm)
         unsigned long epoch = ntp->getEpochTime();
         if (epoch % INTERVAL == INFLUX)
         {
+            Serial.printf("%s influx start\n", ntp->getFormattedTime().c_str());
             pre = millis();
-            xSemaphoreTake(_mutex, portMAX_DELAY);
+            // xSemaphoreTake(_mutex, portMAX_DELAY);
             dataStore.updateInflux(epoch - gmtOffset_sec);
-            xSemaphoreGive(_mutex);
+            // xSemaphoreGive(_mutex);
             unsigned long duration = millis() - pre;
-            Serial.printf("influx duration: %d", duration);
-            Serial.println();
+            Serial.printf("%s influx duration: %d\n", ntp->getFormattedTime().c_str(), duration);
+            // Serial.println();
         }
         else if (epoch % INTERVAL == SCAN)
         {
+            Serial.printf("%s scan start\n", ntp->getFormattedTime().c_str());
             pre = millis();
-            xSemaphoreTake(_mutex, portMAX_DELAY);
+            // xSemaphoreTake(_mutex, portMAX_DELAY);
             em->request();
-            xSemaphoreGive(_mutex);
+            // xSemaphoreGive(_mutex);
             unsigned long duration = millis() - pre;
-            Serial.printf("scan duration: %d", duration);
-            Serial.println();
+            Serial.printf("%s scan duration: %d\n", ntp->getFormattedTime().c_str(), duration);
+            // Serial.println();
         }
     }
     Serial.println("InfluxDB Task end.");
@@ -152,6 +154,14 @@ void setup()
     em->scan();
 
     xTaskCreate(influxTask, "InfluxTask", 4096, NULL, 5, NULL);
+
+    // set mutex
+    xSemaphoreHandle mutex = xSemaphoreCreateMutex();
+    em->setMutex(mutex);
+
+    // enable WDT
+    enableCore0WDT(); // core 0 のWDT有効
+    enableCore1WDT(); // core 1 のWDT有効
 }
 
 unsigned long preEpoch = 0;

@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include <map>
 
-#define BUF_SIZE 256
+#define BUF_SIZE 512
 typedef struct
 {
     u_char epc;    // 1 byte
@@ -29,7 +29,7 @@ public:
     Device(byte eoj0, byte eoj1, byte eoj2, Node *node);
     /**
      * byte[0]: length
-     * byte[1]-byte[length]: payload 
+     * byte[1]-byte[length]: payload
      */
     virtual byte *request();
     virtual void parse(const byte *props);

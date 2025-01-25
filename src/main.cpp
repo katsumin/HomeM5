@@ -1,9 +1,6 @@
 #include "View.h"
 #define _M5DISPLAY_H_
-class M5Display
-{
-};
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include <time.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
@@ -25,7 +22,7 @@ class M5Display
 #define TEST
 
 // instances
-static TFT_eSPI lcd;
+static M5GFX lcd;
 FunctionButton btnB(&M5.BtnB, &lcd, POS_B_X);
 FunctionButton btnC(&M5.BtnC, &lcd, POS_C_X);
 ViewController viewController(&btnC, &lcd);
@@ -58,7 +55,7 @@ void nw_init()
     {
         // Ethernet
         Serial.println("Ethernet connected");
-        Serial.println("IP address: ");
+        Serial.print("IP address: ");
         addr = Ethernet.localIP();
         isEther = true;
         headView.setNwType("Ethernet");
@@ -78,7 +75,7 @@ void nw_init()
             delay(100);
         }
         Serial.println("WiFi connected");
-        Serial.println("IP address: ");
+        Serial.print("IP address: ");
         addr = WiFi.localIP();
         headView.setNwType("WiFi");
         udpNtp = new WiFiUDP();
@@ -86,6 +83,7 @@ void nw_init()
         udpMulti = new WiFiUDP();
         dataStore.init(new WiFiClient(), INFLUX_SERVER, INFLUX_DB);
     }
+    Serial.println(addr);
     headView.setIpAddress(addr);
     em = new EthernetManager(udpMulti, udpUni);
     em->setDataStore(&dataStore);
@@ -140,7 +138,9 @@ void static influxTask(void *arm)
 void setup()
 {
     lcd.init();
-    M5.begin();
+    auto cfg = M5.config();
+    cfg.serial_baudrate = 115200;
+    M5.begin(cfg);
 
     //  View
     viewController.setView(VIEWKEY_MAIN, &mainView);

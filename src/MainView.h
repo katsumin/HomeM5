@@ -19,11 +19,11 @@ private:
     DataStore *_store;
 
 public:
-    MainView(DataStore *store, TFT_eSPI *lcd) : View(lcd)
+    MainView(DataStore *store, M5GFX *lcd) : View(lcd)
     {
         setDataStore(store);
     };
-    ~MainView(){};
+    ~MainView() {};
     inline void setDataStore(DataStore *store) { _store = store; };
     virtual void init()
     {

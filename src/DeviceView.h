@@ -17,14 +17,14 @@ protected:
     int16_t _fontWidth;
 
 public:
-    DeviceView(Device *device, TFT_eSPI *lcd);
+    DeviceView(Device *device, M5GFX *lcd);
     inline void setDevice(Device *device) { _device = device; }
     inline void setName(char *name) { _name = name; }
     inline char *getName() { return _name; }
     virtual inline Device *getDevice() { return _device; }
     virtual void init();
     virtual void update();
-    static DeviceView *createView(Device *device, TFT_eSPI *lcd);
+    static DeviceView *createView(Device *device, M5GFX *lcd);
 };
 
 class AirconView : public DeviceView
@@ -33,7 +33,7 @@ private:
     static int _count;
 
 public:
-    AirconView(Aircon *device, TFT_eSPI *lcd);
+    AirconView(Aircon *device, M5GFX *lcd);
     virtual void init();
     virtual void update();
 };
@@ -41,7 +41,7 @@ public:
 class ElectricWaterHeaterView : public DeviceView
 {
 public:
-    ElectricWaterHeaterView(ElectricWaterHeater *device, TFT_eSPI *lcd);
+    ElectricWaterHeaterView(ElectricWaterHeater *device, M5GFX *lcd);
     virtual void init();
     virtual void update();
 };
@@ -49,7 +49,7 @@ public:
 class SolarPowerView : public DeviceView
 {
 public:
-    SolarPowerView(SolarPower *device, TFT_eSPI *lcd);
+    SolarPowerView(SolarPower *device, M5GFX *lcd);
     virtual void init();
     virtual void update();
 };
@@ -57,7 +57,7 @@ public:
 class BatteryView : public DeviceView
 {
 public:
-    BatteryView(Battery *device, TFT_eSPI *lcd);
+    BatteryView(Battery *device, M5GFX *lcd);
     virtual void init();
     virtual void update();
 };
@@ -68,7 +68,7 @@ private:
     static int _count;
 
 public:
-    TempSensorView(TempSensor *device, TFT_eSPI *lcd);
+    TempSensorView(TempSensor *device, M5GFX *lcd);
     virtual void init();
     virtual void update();
 };
@@ -79,7 +79,7 @@ private:
     static int _count;
 
 public:
-    HumiditySensorView(HumiditySensor *device, TFT_eSPI *lcd);
+    HumiditySensorView(HumiditySensor *device, M5GFX *lcd);
     virtual void init();
     virtual void update();
 };
@@ -90,7 +90,7 @@ private:
     static int _count;
 
 public:
-    PressureSensorView(PressureSensor *device, TFT_eSPI *lcd);
+    PressureSensorView(PressureSensor *device, M5GFX *lcd);
     virtual void init();
     virtual void update();
 };
@@ -101,7 +101,7 @@ private:
     static int _count;
 
 public:
-    CO2SensorView(CO2Sensor *device, TFT_eSPI *lcd);
+    CO2SensorView(CO2Sensor *device, M5GFX *lcd);
     virtual void init();
     virtual void update();
 };
@@ -112,7 +112,7 @@ private:
     static int _count;
 
 public:
-    VOCSensorView(VOCSensor *device, TFT_eSPI *lcd);
+    VOCSensorView(VOCSensor *device, M5GFX *lcd);
     virtual void init();
     virtual void update();
 };

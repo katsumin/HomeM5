@@ -1,22 +1,20 @@
 #ifndef _VIEW_H_
 #define _VIEW_H_
 #include <map>
-#define LGFX_M5STACK
-#include <LGFX_TFT_eSPI.hpp>
 #include "FunctionButton.h"
 
 class View
 {
 private:
     boolean _enable;
-    TFT_eSPI *_lcd;
+    M5GFX *_lcd;
 
 public:
-    View(TFT_eSPI *lcd)
+    View(M5GFX *lcd)
     {
         _lcd = lcd;
     }
-    inline TFT_eSPI *getLcd() { return _lcd; }
+    inline M5GFX *getLcd() { return _lcd; }
     inline boolean isEnable() { return _enable; };
     inline void setEnable(boolean enable) { _enable = enable; };
     virtual void init();
@@ -41,18 +39,18 @@ private:
     std::map<String, View *> _views;
     std::map<String, String> _keys;
     FunctionButton *_button;
-    TFT_eSPI *_lcd;
+    M5GFX *_lcd;
 
 public:
-    ViewController(FunctionButton *btn, TFT_eSPI *lcd)
+    ViewController(FunctionButton *btn, M5GFX *lcd)
     {
         _curKey = "";
         _lastKey = "";
         _button = btn;
         _lcd = lcd;
     };
-    ~ViewController(){};
-    inline TFT_eSPI *getLcd() { return _lcd; }
+    ~ViewController() {};
+    inline M5GFX *getLcd() { return _lcd; }
     inline const char *getNextKey() { return _keys[_curKey].c_str(); };
     inline void setCurrentKey(const char *key) { setCurrentKey(String(key)); };
     void setCurrentKey(const String key)

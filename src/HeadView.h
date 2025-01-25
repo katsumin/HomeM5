@@ -1,13 +1,13 @@
 #ifndef _HEADVIEW_H_
 #define _HEADVIEW_H_
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include "Free_Fonts.h"
 #include <NTPClient.h>
 
 class HeadView
 {
 private:
-    TFT_eSPI *_lcd;
+    M5GFX *_lcd;
     // IPアドレス
     IPAddress _ipaddr;
     // NW type
@@ -43,11 +43,11 @@ private:
     }
 
 public:
-    HeadView(TFT_eSPI *lcd)
+    HeadView(M5GFX *lcd)
     {
         _lcd = lcd;
     }
-    inline TFT_eSPI *getLcd() { return _lcd; }
+    inline M5GFX *getLcd() { return _lcd; }
     inline void setIpAddress(IPAddress addr)
     {
         _ipaddr = addr;

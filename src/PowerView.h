@@ -16,11 +16,11 @@ private:
     int _currentIndex;
 
 public:
-    PowerView(SmartMeter *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
+    PowerView(SmartMeter *device, M5GFX *lcd) : DeviceView(device, lcd)
     {
         setName("POWER");
     }
-    ~PowerView(){};
+    ~PowerView() {};
     virtual void init()
     {
         getLcd()->setFont(&fonts::lgfxJapanGothic_16);

@@ -2,7 +2,7 @@
 #include "PowerView.h"
 #include "Node.h"
 
-DeviceView *DeviceView::createView(Device *device, TFT_eSPI *lcd)
+DeviceView *DeviceView::createView(Device *device, M5GFX *lcd)
 {
     uint16_t type = device->getClassType();
     if (type == 0x0288)
@@ -49,7 +49,7 @@ DeviceView *DeviceView::createView(Device *device, TFT_eSPI *lcd)
 }
 
 //
-DeviceView::DeviceView(Device *device, TFT_eSPI *lcd) : View(lcd)
+DeviceView::DeviceView(Device *device, M5GFX *lcd) : View(lcd)
 {
     setDevice(device);
 }
@@ -66,7 +66,7 @@ void DeviceView::init()
 
 //
 int AirconView::_count = 0;
-AirconView::AirconView(Aircon *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
+AirconView::AirconView(Aircon *device, M5GFX *lcd) : DeviceView(device, lcd)
 {
     const int len = 6 + 2 + 1; // "Aircon" + "xx" + '\0'
     char *buf = (char *)malloc(len);
@@ -169,7 +169,7 @@ void AirconView::update()
 }
 
 //
-ElectricWaterHeaterView::ElectricWaterHeaterView(ElectricWaterHeater *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
+ElectricWaterHeaterView::ElectricWaterHeaterView(ElectricWaterHeater *device, M5GFX *lcd) : DeviceView(device, lcd)
 {
     setName("Ecocute");
 }
@@ -249,7 +249,7 @@ void ElectricWaterHeaterView::update()
 }
 
 //
-SolarPowerView::SolarPowerView(SolarPower *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
+SolarPowerView::SolarPowerView(SolarPower *device, M5GFX *lcd) : DeviceView(device, lcd)
 {
     setName("Solar");
 }
@@ -315,7 +315,7 @@ void SolarPowerView::update()
 }
 
 //
-BatteryView::BatteryView(Battery *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
+BatteryView::BatteryView(Battery *device, M5GFX *lcd) : DeviceView(device, lcd)
 {
     setName("Battery");
 }
@@ -379,7 +379,7 @@ void BatteryView::update()
 
 //
 int TempSensorView::_count = 0;
-TempSensorView::TempSensorView(TempSensor *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
+TempSensorView::TempSensorView(TempSensor *device, M5GFX *lcd) : DeviceView(device, lcd)
 {
     const int len = 5 + 2 + 1; // "Temp_" + "xx" + '\0'
     char *buf = (char *)malloc(len);
@@ -439,7 +439,7 @@ void TempSensorView::update()
 
 //
 int HumiditySensorView::_count = 0;
-HumiditySensorView::HumiditySensorView(HumiditySensor *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
+HumiditySensorView::HumiditySensorView(HumiditySensor *device, M5GFX *lcd) : DeviceView(device, lcd)
 {
     const int len = 5 + 2 + 1; // "Humi_" + "xx" + '\0'
     char *buf = (char *)malloc(len);
@@ -499,7 +499,7 @@ void HumiditySensorView::update()
 
 //
 int PressureSensorView::_count = 0;
-PressureSensorView::PressureSensorView(PressureSensor *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
+PressureSensorView::PressureSensorView(PressureSensor *device, M5GFX *lcd) : DeviceView(device, lcd)
 {
     const int len = 6 + 2 + 1; // "Press_" + "xx" + '\0'
     char *buf = (char *)malloc(len);
@@ -559,7 +559,7 @@ void PressureSensorView::update()
 
 //
 int CO2SensorView::_count = 0;
-CO2SensorView::CO2SensorView(CO2Sensor *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
+CO2SensorView::CO2SensorView(CO2Sensor *device, M5GFX *lcd) : DeviceView(device, lcd)
 {
     const int len = 4 + 2 + 1; // "CO2_" + "xx" + '\0'
     char *buf = (char *)malloc(len);
@@ -619,7 +619,7 @@ void CO2SensorView::update()
 
 //
 int VOCSensorView::_count = 0;
-VOCSensorView::VOCSensorView(VOCSensor *device, TFT_eSPI *lcd) : DeviceView(device, lcd)
+VOCSensorView::VOCSensorView(VOCSensor *device, M5GFX *lcd) : DeviceView(device, lcd)
 {
     const int len = 4 + 2 + 1; // "VOC_" + "xx" + '\0'
     char *buf = (char *)malloc(len);

@@ -1,6 +1,6 @@
 #include "FunctionButton.h"
 
-FunctionButton::FunctionButton(Button *button, TFT_eSPI *lcd, uint16_t xpos)
+FunctionButton::FunctionButton(m5::Button_Class *button, M5GFX *lcd, uint16_t xpos)
 {
     _button = button;
     _lcd = lcd;

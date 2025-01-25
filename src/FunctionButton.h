@@ -1,8 +1,7 @@
 #ifndef _FUNC_BTN_H_
 #define _FUNC_BTN_H_
-#define LGFX_M5STACK
-#include <LGFX_TFT_eSPI.hpp>
-#include <utility/Button.h>
+#include <utility/Button_Class.hpp>
+#include <M5Unified.h>
 
 #define TEXT_HEIGHT (15)
 #define WIDTH (60)
@@ -13,18 +12,18 @@
 class FunctionButton
 {
 private:
-    TFT_eSPI *_lcd;
-    Button *_button;
+    M5GFX *_lcd;
+    m5::Button_Class *_button;
     char *_label;
     void _set(const char *label, int color);
     boolean _enable = false;
     uint16_t _xpos;
 
 public:
-    FunctionButton(Button *button, TFT_eSPI *lcd, uint16_t xpos);
-    inline TFT_eSPI *getLcd() { return _lcd; }
+    FunctionButton(m5::Button_Class *button, M5GFX *lcd, uint16_t xpos);
+    inline M5GFX *getLcd() { return _lcd; }
     inline char *getLabel() { return _label; };
-    inline Button *getButton()
+    inline m5::Button_Class *getButton()
     {
         return _button;
     };

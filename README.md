@@ -34,13 +34,7 @@ Home Metrics By M5Stack
 
 # 使用ライブラリ
 
-- ArduinoHttpClient ( https://github.com/arduino-libraries/ArduinoHttpClient?utm_source=platformio&utm_medium=piohome )
-  - InfluxDB 接続用 HttpClient ライブラリ(Client クラスのラッパ)
-- M5Stack ( https://github.com/m5stack/m5stack?utm_source=platformio&utm_medium=piohome )
-  - M5Stack@0.2.6
-    - 最新版では ArduinoHttpClient とコンフリクトしてしまうため、0.2.6 版をあえて使用
-  - WiFiClient（Client の派生クラス）
-  - WiFiUDP（UDP の派生クラス）
+- m5stack/M5Unified @ ^0.2.2 ( https://github.com/m5stack/M5Unified )
 - Ethernet3 ( https://github.com/katsumin/Ethernet3/tree/reopen )
   - EthernetClient（Client の派生クラス）
   - EthernetUDP（UDP の派生クラス）
@@ -52,8 +46,8 @@ Home Metrics By M5Stack
     - Ethernet でも使えるように、 WiFiUDP を UDP に変更
 - arduino-libraries/NTPClient( https://github.com/arduino-libraries/NTPClient )
   - NTP 用ライブラリ
-- lovyan03/LovyanGFX( https://github.com/lovyan03/LovyanGFX )
-  - 日本語表示対応ライブラリ
+- knolleary/PubSubClient @ 2.8( https://github.com/knolleary/pubsubclient )
+  - MQTT 用ライブラリ
 
 # コンフィギュレーション
 

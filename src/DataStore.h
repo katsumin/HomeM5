@@ -1,9 +1,10 @@
 #ifndef _DATASTORE_H_
 #define _DATASTORE_H_
 #include <map>
+#include <PubSubClient.h>
 #include "Node.h"
 #include "EL.h"
-#include "InfluxDb.h"
+// #include "InfluxDb.h"
 #include "DeviceView.h"
 
 class DataStore
@@ -12,26 +13,31 @@ private:
     EL *_echo;
     std::map<String, String> _keys;
     std::map<String, Node *> _nodes;
-    InfluxDb *_influxdb;
+    // InfluxDb *_influxdb;
     ViewController *_viewController;
+    xSemaphoreHandle _mutex;
+    PubSubClient *_mqtt;
 
 public:
     DataStore(ViewController *vc)
     {
         setViewController(vc);
     }
-    void init(Client *pC, const char *influx_server, const char *influx_db)
-    {
-        InfluxDb *db = new InfluxDb(influx_server, influx_db);
-        db->init(pC);
-        setInfluxdb(db);
-    }
+    // void init(Client *pC, const char *broker_address, int port, uint16_t bufer_size, const char *topic)
+    // {
+    // InfluxDb *db = new InfluxDb(influx_server, influx_db);
+    // db->init(pC);
+    // setInfluxdb(db);
+    // PubSubClient *mqtt = new PubSubClient(broker_address, port, *pC);
+    // mqtt->setBufferSize(bufer_size);
+    // setMqtt(mqtt);
+    // }
     inline void setEchonet(EL *el) { _echo = el; }
-    inline InfluxDb *getInfluxdb() { return _influxdb; }
-    inline void setInfluxdb(InfluxDb *db) { _influxdb = db; }
+    // inline InfluxDb *getInfluxdb() { return _influxdb; }
+    // inline void setInfluxdb(InfluxDb *db) { _influxdb = db; }
     inline ViewController *getViewController() { return _viewController; }
     inline void setViewController(ViewController *vc) { _viewController = vc; }
-    inline void setMutex(xSemaphoreHandle mutex) { _influxdb->setMutex(mutex); }
+    inline void setMutex(xSemaphoreHandle mutex) { _mutex = mutex; }
     inline std::map<String, Node *> *getNodes() { return &_nodes; }
     void processingProperty(const byte *props, IPAddress addr, const byte *seoj)
     {
@@ -76,18 +82,25 @@ public:
             delay(100);
         }
     }
-    void updateInflux(unsigned long t)
+    void updateInflux(unsigned long t, const char *topic)
     {
-        std::string st = "";
+        // std::string st = "";
         for (auto itr = _nodes.begin(); itr != _nodes.end(); ++itr)
         {
             std::string statement = itr->second->updateInflux(t);
             if (statement.length() == 0)
                 continue;
-            st.append(statement);
+            // st.append(statement);
+            xSemaphoreTake(_mutex, portMAX_DELAY);
+            Serial.printf("mqtt data len: %d\n", statement.length());
+            boolean res = getMqtt()->publish(topic, statement.c_str());
+            Serial.printf("mqtt publish: %d\n", res);
+            xSemaphoreGive(_mutex);
+            delay(100); // 0.1s wait
         }
-        getInfluxdb()->write(st.c_str());
     }
+    inline PubSubClient *getMqtt() { return _mqtt; }
+    inline void setMqtt(PubSubClient *pC) { _mqtt = pC; }
 };
 
 #endif

@@ -6,7 +6,7 @@
 #include <WiFiMulti.h>
 #include <Ethernet3.h>
 #include <NTPClient.h>
-#include "InfluxDb.h"
+// #include "InfluxDb.h"
 #include "config.h"
 #include "FunctionButton.h"
 #include "MainView.h"
@@ -44,6 +44,7 @@ void nw_init()
     UDP *udpNtp = nullptr;
     UDP *udpUni = nullptr;
     UDP *udpMulti = nullptr;
+    Client *pC = nullptr;
 
     headView.init();
     Ethernet.setCsPin(CS);   // Ethernet3
@@ -55,14 +56,13 @@ void nw_init()
     {
         // Ethernet
         Serial.println("Ethernet connected");
-        Serial.print("IP address: ");
         addr = Ethernet.localIP();
         isEther = true;
         headView.setNwType("Ethernet");
         udpNtp = new EthernetUDP();
         udpUni = new EthernetUDP();
         udpMulti = new EthernetUDP();
-        dataStore.init(new EthernetClient(), INFLUX_SERVER, INFLUX_DB);
+        pC = new EthernetClient();
     }
     else
     {
@@ -75,16 +75,17 @@ void nw_init()
             delay(100);
         }
         Serial.println("WiFi connected");
-        Serial.print("IP address: ");
         addr = WiFi.localIP();
         headView.setNwType("WiFi");
         udpNtp = new WiFiUDP();
         udpUni = nullptr;
         udpMulti = new WiFiUDP();
-        dataStore.init(new WiFiClient(), INFLUX_SERVER, INFLUX_DB);
+        pC = new WiFiClient();
     }
+    Serial.print("IP address: ");
     Serial.println(addr);
     headView.setIpAddress(addr);
+    // dataStore.init(pC, MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_PUBLISH_BUFFER, MQTT_PUBLISH_TOPIC);
     em = new EthernetManager(udpMulti, udpUni);
     em->setDataStore(&dataStore);
 
@@ -93,6 +94,22 @@ void nw_init()
     ntp->begin();
     ntp->update();
     headView.setNtp(ntp);
+
+    // MQTT
+    PubSubClient *mqtt = new PubSubClient(MQTT_BROKER_HOST, MQTT_BROKER_PORT, *pC);
+    mqtt->setBufferSize(MQTT_PUBLISH_BUFFER);
+    dataStore.setMqtt(mqtt);
+    if (mqtt->connect("home_m5", MQTT_BROKER_USER, MQTT_BROKER_PASS))
+    {
+        Serial.println("MQTT connected.");
+    }
+}
+
+void updateNtp()
+{
+    btnB.disable("NTP");
+    ntp->update();
+    btnB.enable("NTP");
 }
 
 #define INTERVAL (60)
@@ -111,7 +128,7 @@ void static influxTask(void *arm)
             Serial.printf("%s influx start\n", ntp->getFormattedTime().c_str());
             pre = millis();
             // xSemaphoreTake(_mutex, portMAX_DELAY);
-            dataStore.updateInflux(epoch - gmtOffset_sec);
+            dataStore.updateInflux(epoch - gmtOffset_sec, MQTT_PUBLISH_TOPIC);
             // xSemaphoreGive(_mutex);
             unsigned long duration = millis() - pre;
             Serial.printf("%s influx duration: %d\n", ntp->getFormattedTime().c_str(), duration);
@@ -146,10 +163,8 @@ void setup()
     viewController.setView(VIEWKEY_MAIN, &mainView);
 
     // LAN
-    btnB.disable("NTP");
     nw_init();
-    ntp->update();
-    btnB.enable("NTP");
+    updateNtp();
 
     em->scan();
 
@@ -176,13 +191,17 @@ void loop()
         preEpoch = epoch;
         headView.update();
         viewController.update();
+
+        if (epoch % (24 * 60 * 60) == 0)
+        {
+            // 時々大きく時刻ずれるので、1日ごとにNTP時刻合わせ
+            updateNtp();
+        }
     }
 
     if (btnB.isEnable() && btnB.getButton()->wasPressed())
     {
-        btnB.disable("NTP");
-        ntp->update();
-        btnB.enable("NTP");
+        updateNtp();
     }
     else if (btnC.isEnable() && btnC.getButton()->wasPressed())
     {
@@ -190,4 +209,14 @@ void loop()
     }
     delay(1);
     M5.update();
+
+    PubSubClient *mqtt = dataStore.getMqtt();
+    while (!mqtt->connected())
+    {
+        if (mqtt->connect("home_m5", MQTT_BROKER_USER, MQTT_BROKER_PASS))
+        {
+            Serial.println("MQTT re-connected.");
+        }
+    }
+    mqtt->loop();
 }

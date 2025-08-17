@@ -61,9 +61,13 @@ Home Metrics By M5Stack
    - define
      - WIFI_SSID : WiFi SSID
      - WIFI_PASS : WiFi Password
-     - INFLUX_SERVER : InfluxDB サーバ・アドレス
-     - INFLUX_DB : DB 名
      - NTP_SERVER : NTP サーバ・アドレス
+     - MQTT_BROKER_HOST : MQTT ブローカ・アドレス
+     - MQTT_BROKER_PORT : MQTT ブローカ・ポート番号（1883 でよければ変更不要）
+     - MQTT_BROKER_USER : MQTT ブローカ・ユーザ名
+     - MQTT_BROKER_PASS : MQTT ブローカ・パスワード
+     - MQTT_PUBLISH_BUFFER : MQTT PUBLISH 時のバッファ（1024 でよければ変更不要）
+     - MQTT_PUBLISH_TOPIC : MQTT PUBLISH 時の TOPIC 名（home_measure でよければ変更不要）
    - byte array
      - W5500 MAC アドレス
        - byte mac[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};

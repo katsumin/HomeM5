@@ -6,7 +6,6 @@
 #include <WiFiMulti.h>
 #include <Ethernet3.h>
 #include <NTPClient.h>
-// #include "InfluxDb.h"
 #include "config.h"
 #include "FunctionButton.h"
 #include "MainView.h"
@@ -85,7 +84,6 @@ void nw_init()
     Serial.print("IP address: ");
     Serial.println(addr);
     headView.setIpAddress(addr);
-    // dataStore.init(pC, MQTT_BROKER_HOST, MQTT_BROKER_PORT, MQTT_PUBLISH_BUFFER, MQTT_PUBLISH_TOPIC);
     em = new EthernetManager(udpMulti, udpUni);
     em->setDataStore(&dataStore);
 
